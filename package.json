@@ -1,8 +1,8 @@
 {
-  "name": "prisma-test",
+  "name": "academeX",
   "version": "0.0.1",
-  "description": "",
-  "author": "",
+  "description": "This repository hosts the University Social Media Platform, designed for students to connect and collaborate. Key features include a community portal, college-specific spaces, a hashtag system for content filtering, and a library for course materials. Built with NestJS and MySQL, it aims to enhance student engagement and resource sharing.",
+  "author": "khaled alkhalili",
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
