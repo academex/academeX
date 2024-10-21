@@ -1,26 +1,29 @@
 import { Controller, Post, Body } from '@nestjs/common';
-import { LoginDto } from './dto/login.dto';
+import { SigninDto } from './dto/signin.dto';
 import { AuthService } from './auth.service';
 import { Public } from '../../common/decorators/access.decorator';
-import { CreateUserDto } from 'src/common/dtos/create-user.dto';
 import { UserIdentity } from 'src/common/decorators/user.decorator';
+import { Prisma } from '@prisma/client';
+import { SignupDto } from './dto/signup.dto';
 
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
 
   @Public()
-  @Post('login')
-  async login(@Body() loginDto: LoginDto) {
-    return await this.authService.login(loginDto);
+  @Post('signin')
+  async signin(@Body() signinDto: SigninDto) {
+    // async login() {
+    return await this.authService.signin(signinDto);
+    // return await this.authService.login();
   }
 
   @Public()
-  @Post('register')
-  async register(@Body() createUserDto: CreateUserDto) {
-    return await this.authService.register(createUserDto);
+  @Post('signup')
+  async signup(@Body() signupDto: SignupDto) {
+    return await this.authService.signup(signupDto);
   }
-  
+
   // @Post('verify')
   // async verifyUser(@Body() { otp }: VerifyUserDto, @UserIdentity() user: IUser) {
   //   return await this.authService.verifyUser(user.id, otp);

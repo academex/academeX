@@ -1,11 +1,10 @@
-import { CanActivate, ExecutionContext, Logger } from '@nestjs/common';
+import { CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_KEY } from '../constants';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import { config } from 'dotenv';
 import { UserService } from 'src/modules/user/user.service';
-import { Role, UserStatus } from '../enums';
 config();
 
 export class AuthGuard implements CanActivate {
@@ -30,18 +29,10 @@ export class AuthGuard implements CanActivate {
         secret: process.env.JWT_SECRET,
       });
 
-      //finding the user , and didn't store teh user in the token
-      // to get the lastest user info (because maybe the user's info got updated)
-      // const { password, ...user } = await this.userService.findOne(username);
-      // if (
-      //   !user ||
-      //   (user.status != UserStatus.ACTIVE &&
-      //     user.roles != Role.ADMIN &&
-      //     request.path != '/auth/verify')
-      // )
-      //   return false;
-      // if (!user) return false;
-      // request['user'] = user;
+      const { password, ...user } =
+        await this.userService.findOneByUsername(username);
+      if (!user) return false;
+      request['user'] = user;
       return true;
     } catch (err) {
       return false;

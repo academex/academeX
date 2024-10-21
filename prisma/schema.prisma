@@ -9,59 +9,86 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
+   directUrl = env("DATABASE_URL_UNPOOLED")
 }
 
 // MODELS
-model User{
-  id              Int      @id @default(autoincrement())
-  username String @unique
-  first_name String
-  last_name String
-  email        String 
-  role          Role
-  password String
-  resetPasswordToken String
-  resetPasswordTokenExpires DateTime @default(now())
-  photo_url String
-  bio String
-  createdAt DateTime @default(now())
-  updatedA DateTime @updatedAt
-    // @@unique([email, username]) // Compound unique constraint
+model User {
+  id                        Int       @id @default(autoincrement())
+  username                  String    @unique
+  firstName                 String    @map("first_name")
+  lastName                  String?   @map("last_name")
+  email                     String
+  role                      Role      @default(STUDENT)
+  password                  String
+  resetPasswordToken        String?
+  resetPasswordTokenExpires DateTime? @default(now())
+  photoUrl                  String?   @map("photo_url")
+  bio                       String?
+  currentYear               Int       @map("current_year")
+  gender                    Gender    @default(MALE)
+  phoneNum                  String    @map("phone_num")
+  tag                       Tag       @relation(fields: [tagId], references: [id])
+  tagId                     Int       @map("tag_id")
+  createdAt                 DateTime  @default(now()) @map("created_at")
+  updatedA                  DateTime  @default(now()) @updatedAt @map("updated_at")
+  post                      Post[]
+
+  // @@unique([email, username]) // Compound unique constraint
 }
 
-model Tag{
-  id              Int      @id @default(autoincrement())
-  name        String
-  college        String
-  major        String
-  description        String
-  keywords        String //key1,key2,key3 nad split it 
+model Tag {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  college     String
+  major       String
+  description String?
+  yearsNum    Int      @map("years_num")
+  users       User[]
+  posts       Post[]
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedA    DateTime @default(now()) @updatedAt @map("updated_at")
 }
 
-model Post{
-  id              Int      @id @default(autoincrement())
-  content        String
-  file_url        String
-  likes        Int
+model Post {
+  id          Int           @id @default(autoincrement())
+  content     String
+  likes       Int?          @default(0)
+  tags        Tag[]
+  user        User          @relation(fields: [userId], references: [id])
+  userId      Int           @map("user_id")
+  file        Library?      @relation(fields: [fileId], references: [id])
+  fileId      Int?          @map("file_id")
+  PostUploads PostUploads[]
 }
 
-model Library{
-  id              Int      @id @default(autoincrement())
-  description        String
-  file_url        String
-  stars        Int
+model Library {
+  id          Int    @id @default(autoincrement())
+  description String
+  fileUrl     String @map("file_url")
+  stars       Int
+  post        Post[]
 }
 
-model Post_Uploads{
-  id              Int      @id @default(autoincrement())
-  url             String
+model PostUploads {
+  id     Int    @id @default(autoincrement())
+  url    String
+  post   Post   @relation(fields: [postId], references: [id])
+  postId Int    @map("post_id")
+
+  @@map("Post_Uploads")
 }
 
 // ENUMS
 enum Role {
   ADMIN
   INSTRUCTOR
-  STUDENT     
+  STUDENT
+}
+
+enum Gender {
+  MALE
+  FEMALE
 }
