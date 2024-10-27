@@ -29,8 +29,13 @@ export class AuthGuard implements CanActivate {
         secret: process.env.JWT_SECRET,
       });
 
-      const { password, ...user } =
-        await this.userService.findOneByUsername(username);
+      // const { password, ...user } =
+      const {
+        password,
+        resetPasswordToken,
+        resetPasswordTokenExpires,
+        ...user
+      } = await this.userService.findOneByUsername(username);
       if (!user) return false;
       request['user'] = user;
       return true;

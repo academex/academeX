@@ -11,7 +11,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-   directUrl = env("DATABASE_URL_UNPOOLED")
+  //  directUrl = env("DATABASE_URL_UNPOOLED")
 }
 
 // MODELS
@@ -34,7 +34,9 @@ model User {
   tagId                     Int       @map("tag_id")
   createdAt                 DateTime  @default(now()) @map("created_at")
   updatedA                  DateTime  @default(now()) @updatedAt @map("updated_at")
-  post                      Post[]
+  posts                     Post[]
+  comments                  Comment[]
+  replies                   Reply[]
 
   // @@unique([email, username]) // Compound unique constraint
 }
@@ -61,15 +63,45 @@ model Post {
   userId      Int           @map("user_id")
   file        Library?      @relation(fields: [fileId], references: [id])
   fileId      Int?          @map("file_id")
-  PostUploads PostUploads[]
+  postUploads PostUploads[]
+  comments    Comment[]
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedA    DateTime      @default(now()) @updatedAt @map("updated_at")
+}
+
+model Comment {
+  id        Int      @id @default(autoincrement())
+  content   String
+  likes     Int?     @default(0)
+  user      User     @relation(fields: [userId], references: [id])
+  userId    Int      @map("user_id")
+  post      Post     @relation(fields: [postId], references: [id])
+  postId    Int      @map("post_id")
+  replies   Reply[]
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedA  DateTime @default(now()) @updatedAt @map("updated_at")
+}
+
+model Reply {
+  id        Int      @id @default(autoincrement())
+  content   String
+  likes     Int?     @default(0)
+  user      User     @relation(fields: [userId], references: [id])
+  userId    Int      @map("user_id")
+  comment   Comment  @relation(fields: [commentId], references: [id])
+  commentId Int      @map("comment_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedA  DateTime @default(now()) @updatedAt @map("updated_at")
 }
 
 model Library {
-  id          Int    @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   description String
-  fileUrl     String @map("file_url")
+  fileUrl     String   @map("file_url")
   stars       Int
   post        Post[]
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedA    DateTime @default(now()) @updatedAt @map("updated_at")
 }
 
 model PostUploads {
@@ -77,6 +109,9 @@ model PostUploads {
   url    String
   post   Post   @relation(fields: [postId], references: [id])
   postId Int    @map("post_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedA  DateTime @default(now()) @updatedAt @map("updated_at")
 
   @@map("Post_Uploads")
 }

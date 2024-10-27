@@ -1,32 +1,62 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { PrismaService } from 'src/modules/database/prisma.service';
-import { Prisma, User } from '@prisma/client';
+import { Post, Prisma, User } from '@prisma/client';
 
 @Injectable()
 export class PostService {
   constructor(private prisma: PrismaService) {}
 
-  // todo: in file case: create a new file using lib model
+  // todo: in file case:
+  // upload file, (in case of wrong throw an exception)
+  //  create a new file with the returned url, using createOrConnect in create fun
   async create(createPostDto: CreatePostDto, user: User) {
-    const { tags, ...rest } = createPostDto;
+    const { tagIds, ...rest } = createPostDto;
 
-    // const post = await this.prisma.post.create({ data:{
-    //   ...rest,
-    //   // tags:{
-    //     // connect:[{id:tag}]
-    //   // }
-    // } });
-    // return post;
+    // Convert the tagIds array into numbers
+    const tagIdsAsNumbers = tagIds.map((id) => Number(id));
+
+    // Find the tags using the converted tagIds
+    const tags = await this.prisma.tag.findMany({
+      where: { id: { in: tagIdsAsNumbers } },
+    });
+
+    if (tags.length !== tagIdsAsNumbers.length) {
+      throw new BadRequestException('Some tags do not exist');
+    }
+
+    const post = await this.prisma.post.create({
+      data: {
+        ...rest,
+        user: {
+          connect: { id: user.id },
+        },
+        tags: {
+          connect: tagIdsAsNumbers.map((tagId) => ({ id: tagId })),
+        },
+      },
+    });
+
+    return post;
   }
 
-  findAll() {
-    return `This action returns all post`;
+  async findAll(user: User): Promise<Post[]> {
+    const id = user.tagId;
+    const posts = await this.prisma.post.findMany({
+      where: {
+        tags: {
+          some: { id },
+        },
+      },
+    });
+    return posts;
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} post`;
+  async findOne(id: number): Promise<Post> {
+    const post = await this.prisma.post.findUnique({ where: { id } });
+    if (!post) throw new BadRequestException('no post with this id');
+    return post;
   }
 
   update(id: number, updatePostDto: UpdatePostDto) {
