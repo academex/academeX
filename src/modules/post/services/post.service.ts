@@ -1,8 +1,8 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { CreatePostDto } from './dto/create-post.dto';
-import { UpdatePostDto } from './dto/update-post.dto';
 import { PrismaService } from 'src/modules/database/prisma.service';
-import { Post, Prisma, User } from '@prisma/client';
+import { Post, Prisma, ReactionType, User } from '@prisma/client';
+import { CreatePostDto } from '../dto/create-post.dto';
+import { UpdatePostDto } from '../dto/update-post.dto';
 
 @Injectable()
 export class PostService {
@@ -49,14 +49,60 @@ export class PostService {
           some: { id },
         },
       },
+      // in reactions: just the total number, num of each type, the first 2 users
+      include: {
+        user: { select: { username: true, id: true, photoUrl: true } },
+        reactions: {
+          select: {
+            type: true,
+            user: {
+              select: {
+                username: true,
+                role: true,
+              },
+            },
+          },
+        },
+      },
     });
     return posts;
   }
 
   async findOne(id: number): Promise<Post> {
-    const post = await this.prisma.post.findUnique({ where: { id } });
+    const post = await this.prisma.post.findUnique({
+      where: { id },
+      include: {
+        user: { select: { username: true, id: true, photoUrl: true } },
+        reactions: {
+          select: {
+            type: true,
+            user: {
+              select: {
+                username: true,
+                role: true,
+              },
+            },
+          },
+        },
+      },
+    });
     if (!post) throw new BadRequestException('no post with this id');
     return post;
+  }
+
+  async reactToPost(id: number, user: User, type: ReactionType) {
+    const react = await this.prisma.reaction.create({
+      data: {
+        type,
+        user: {
+          connect: { id: user.id },
+        },
+        post: {
+          connect: { id },
+        },
+      },
+    });
+    return react;
   }
 
   update(id: number, updatePostDto: UpdatePostDto) {

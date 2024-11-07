@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
-import { PostService } from './post.service';
-import { PostController } from './post.controller';
-import { CommentController } from './comment.controller';
-import { CommentService } from './comment.service';
 import { DatabaseModule } from 'src/modules/database/database.module';
-import { ReplyController } from './reply.controller';
-import { ReplyService } from './reply.service';
+import {
+  CommentController,
+  PostController,
+  ReplyController,
+} from './controllers';
+import { CommentService, PostService, ReplyService } from './services';
 
 @Module({
   imports: [DatabaseModule],

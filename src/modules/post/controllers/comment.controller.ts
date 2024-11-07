@@ -6,10 +6,10 @@ import {
   ParseIntPipe,
   Post,
 } from '@nestjs/common';
-import { CommentService } from './comment.service';
-import { CreateCommentDto } from './dto/create-comment';
 import { UserIdentity } from 'src/common/decorators/user.decorator';
 import { User } from '@prisma/client';
+import { CommentService } from '../services';
+import { CreateCommentDto } from '../dto/create-comment';
 
 @Controller('comment')
 export class CommentController {

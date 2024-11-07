@@ -1,17 +1,25 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../database/prisma.service';
 import { Comment, Post, Reply, User } from '@prisma/client';
-import { CreateReplyDto } from './dto/create-reply';
+import { PrismaService } from 'src/modules/database/prisma.service';
+import { CreateReplyDto } from '../dto/create-reply';
 
 @Injectable()
 export class ReplyService {
   constructor(private prisma: PrismaService) {}
 
   async create(createReplyDto: CreateReplyDto, user: User): Promise<Reply> {
-    const { content, commentId } = createReplyDto;
-    //check if the post exists
+    const { content, commentId, parentId } = createReplyDto;
+    //check if the comment exists
     await this.findCommentOrThrow(commentId);
 
+    //in case there's parentId check if the parentId exists
+    if (parentId) {
+      const parent = await this.prisma.reply.findUnique({
+        where: { id: parentId },
+      });
+
+      if (!parent) throw new NotFoundException('Parent reply not found');
+    }
     const reply = await this.prisma.reply.create({
       data: {
         content,
@@ -21,10 +29,16 @@ export class ReplyService {
         comment: {
           connect: { id: commentId },
         },
+        ...(parentId && {
+          parent: {
+            connect: { id: parentId },
+          },
+        }),
       },
     });
     return reply;
   }
+  
   async findCommentReplies(commentId: number): Promise<Reply[]> {
     await this.findCommentOrThrow(commentId);
     const replies = await this.prisma.reply.findMany({
@@ -35,8 +49,8 @@ export class ReplyService {
           select: { email: true, username: true, role: true, photoUrl: true },
         },
         // getting the user data who been replied to)
-        comment: {
-          include: {
+        parent: {
+          select: {
             user: {
               select: {
                 username: true,

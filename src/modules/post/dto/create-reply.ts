@@ -8,4 +8,8 @@ export class CreateReplyDto {
   @IsNotEmpty()
   @IsNumber()
   commentId: number;
+
+  @IsNotEmpty()
+  @IsNumber()
+  parentId: number;
 }

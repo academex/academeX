@@ -7,13 +7,13 @@ import {
   Param,
   Delete,
   ParseIntPipe,
+  ParseEnumPipe,
 } from '@nestjs/common';
-import { PostService } from './post.service';
-import { CreatePostDto } from './dto/create-post.dto';
-import { UpdatePostDto } from './dto/update-post.dto';
-import { Prisma, User } from '@prisma/client';
+import { Prisma, ReactionType, User } from '@prisma/client';
 import { UserIdentity } from 'src/common/decorators/user.decorator';
 import { Public } from 'src/common/decorators/access.decorator';
+import { PostService } from '../services';
+import { CreatePostDto } from '../dto/create-post.dto';
 
 @Controller('post')
 export class PostController {
@@ -24,6 +24,7 @@ export class PostController {
     return this.postService.create(createPostDto, user);
   }
 
+  //todo: get the query param and named it tag, if it's exists return tag's posts, if not return the user's tag's post. 
   @Get()
   findAll(@UserIdentity() user: User) {
     return this.postService.findAll(user);
@@ -34,6 +35,13 @@ export class PostController {
     return this.postService.findOne(id);
   }
 
+  @Post(':id/react')
+  reactToPost(
+    @Param('id', ParseIntPipe) postId: number,
+    @UserIdentity() user: User,
+    @Body('type', new ParseEnumPipe( ReactionType )) type ) {
+    return this.postService.reactToPost(postId, user,type);
+  }
   // @Patch(':id')
   // update(@Param('id') id: string, @Body() updatePostDto: UpdatePostDto) {
   //   return this.postService.update(+id, updatePostDto);

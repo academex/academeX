@@ -8,8 +8,8 @@ import {
 } from '@nestjs/common';
 import { UserIdentity } from 'src/common/decorators/user.decorator';
 import { User } from '@prisma/client';
-import { CreateReplyDto } from './dto/create-reply';
-import { ReplyService } from './reply.service';
+import { CreateReplyDto } from '../dto/create-reply';
+import { ReplyService } from '../services';
 
 @Controller('reply')
 export class ReplyController {
