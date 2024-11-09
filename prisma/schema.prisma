@@ -9,9 +9,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-  //  directUrl = env("DATABASE_URL_UNPOOLED")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
 }
 
 // MODELS
@@ -109,7 +109,7 @@ model Reaction {
   postId    Int
   createdAt DateTime     @default(now())
 
-  @@unique([userId, postId]) 
+  @@unique([userId, postId])
 }
 
 model Library {
