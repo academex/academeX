@@ -150,4 +150,5 @@ enum ReactionType {
   HEART
   CLAPPING
   FUNNY
+  TEST
 }
