@@ -10,6 +10,7 @@ Dockerfile.prod
 docker-compose.yml
 .dockerignore
 .vscode/
+pgdata
 # Logs
 logs
 *.log
