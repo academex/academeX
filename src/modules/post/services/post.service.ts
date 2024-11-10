@@ -14,16 +14,19 @@ export class PostService {
   async create(createPostDto: CreatePostDto, user: User) {
     const { tagIds, ...rest } = createPostDto;
 
+    let tagIdsAsNumbers;
     // Convert the tagIds array into numbers
-    const tagIdsAsNumbers = tagIds.map((id) => Number(id));
-
-    // Find the tags using the converted tagIds
-    const tags = await this.prisma.tag.findMany({
-      where: { id: { in: tagIdsAsNumbers } },
-    });
-
-    if (tags.length !== tagIdsAsNumbers.length) {
-      throw new BadRequestException('Some tags do not exist');
+    if (tagIds) {
+      tagIdsAsNumbers = tagIds.map((id) => Number(id));
+  
+      // Find the tags using the converted tagIds
+      const tags = await this.prisma.tag.findMany({
+        where: { id: { in: tagIdsAsNumbers } },
+      });
+  
+      if (tags.length !== tagIdsAsNumbers.length) {
+        throw new BadRequestException('Some tags do not exist');
+      }
     }
 
     const post = await this.prisma.post.create({

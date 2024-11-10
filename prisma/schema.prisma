@@ -150,5 +150,8 @@ enum ReactionType {
   HEART
   CLAPPING
   FUNNY
-  TEST
+  CELEBRATE
+  QUESTION
+  INSIGHTFUL
+  LIKE
 }
