@@ -14,11 +14,19 @@ export class CreateTagDto {
 
   @IsNotEmpty()
   @IsString()
-  college: string;
+  collegeAr: string;
 
   @IsNotEmpty()
   @IsString()
-  major: string;
+  collegeEn: string;
+
+  @IsNotEmpty()
+  @IsString()
+  majorAr: string;
+
+  @IsNotEmpty()
+  @IsString()
+  majorEn: string;
 
   @IsOptional()
   @IsString()

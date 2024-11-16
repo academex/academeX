@@ -6,9 +6,10 @@ import {
   ReplyController,
 } from './controllers';
 import { CommentService, PostService, ReplyService } from './services';
+import { StorageModule } from '../storage/storage.module';
 
 @Module({
-  imports: [DatabaseModule],
+  imports: [DatabaseModule,StorageModule],
   controllers: [PostController, CommentController, ReplyController],
   providers: [PostService, CommentService, ReplyService],
 })

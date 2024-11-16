@@ -1,136 +1,171 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
   directUrl = env("DATABASE_URL_UNPOOLED")
 }
 
 // MODELS
 model User {
-  id                        Int        @id @default(autoincrement())
-  username                  String     @unique
-  firstName                 String     @map("first_name")
-  lastName                  String?    @map("last_name")
-  email                     String
-  role                      Role       @default(STUDENT)
+  id                        Int       @id @default(autoincrement())
+  username                  String    @unique
+  firstName                 String    @map("first_name")
+  lastName                  String?   @map("last_name")
+  email                     String    @unique
+  role                      Role      @default(STUDENT)
   password                  String
-  resetPasswordToken        String?
-  resetPasswordTokenExpires DateTime?  @default(now())
-  photoUrl                  String?    @map("photo_url")
-  bio                       String?
-  currentYear               Int        @map("current_year")
-  gender                    Gender     @default(MALE)
-  phoneNum                  String     @map("phone_num")
-  tag                       Tag        @relation(fields: [tagId], references: [id])
-  tagId                     Int        @map("tag_id")
-  createdAt                 DateTime   @default(now()) @map("created_at")
-  updatedA                  DateTime   @default(now()) @updatedAt @map("updated_at")
-  posts                     Post[]
-  comments                  Comment[]
-  replies                   Reply[]
-  reactions                 Reaction[]
+  resetPasswordToken        String?   @unique @map("reset_password_token")
+  resetPasswordTokenExpires DateTime? @default(now()) @map("reset_password_token_expires")
+  photoUrl                  String?   @map("photo_url")
+  bio                       String?   @db.Text
+  currentYear               Int       @map("current_year")
+  gender                    Gender    @default(MALE)
+  phoneNum                  String    @map("phone_num")
+  createdAt                 DateTime  @default(now()) @map("created_at")
+  updatedAt                 DateTime  @default(now()) @updatedAt @map("updated_at")
+  isActive                  Boolean   @default(true)
 
+  // Relations
+  tag       Tag        @relation(fields: [tagId], references: [id])
+  tagId     Int        @map("tag_id")
+  posts     Post[]
+  comments  Comment[]
+  replies   Reply[]
+  reactions Reaction[]
   // @@unique([email, username]) // Compound unique constraint
+
+  @@index([email])
+  @@index([username])
 }
 
 model Tag {
   id          Int      @id @default(autoincrement())
   name        String   @unique
-  college     String
-  major       String
+  // slug        String   @unique
+  collegeAr   String   @map("college_ar")
+  majorAr     String   @map("major_ar")
+  collegeEn   String   @map("college_en")
+  majorEn     String   @map("major_en")
   description String?
   yearsNum    Int      @map("years_num")
-  users       User[]
-  posts       Post[]
+  isActive    Boolean  @default(true)
   createdAt   DateTime @default(now()) @map("created_at")
-  updatedA    DateTime @default(now()) @updatedAt @map("updated_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+
+  // Relations
+  users User[]
+  posts Post[]
+
+  // @@index([slug])
 }
 
 model Post {
-  id          Int           @id @default(autoincrement())
-  content     String
-  likes       Int?          @default(0)
+  id          Int      @id @default(autoincrement())
+  content     String   @db.Text
+  // likes       Int?     @default(0)
+  isPublished Boolean  @default(true) @map("is_published")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+  fileUrl     String?  @map("file_url")
+  fileName    String?  @map("file_name")
+
+  // Relations
   tags        Tag[]
   user        User          @relation(fields: [userId], references: [id])
   userId      Int           @map("user_id")
-  file        Library?      @relation(fields: [fileId], references: [id])
-  fileId      Int?          @map("file_id")
+  // file        Library?      @relation(fields: [fileId], references: [id])
+  // fileId      Int?          @map("file_id")
   postUploads PostUploads[]
   comments    Comment[]
   reactions   Reaction[]
-  createdAt   DateTime      @default(now()) @map("created_at")
-  updatedA    DateTime      @default(now()) @updatedAt @map("updated_at")
+
+  @@index([userId])
 }
 
 model Comment {
   id        Int      @id @default(autoincrement())
   content   String
   likes     Int?     @default(0)
-  user      User     @relation(fields: [userId], references: [id])
-  userId    Int      @map("user_id")
-  post      Post     @relation(fields: [postId], references: [id])
-  postId    Int      @map("post_id")
-  replies   Reply[]
+  isHidden  Boolean  @default(false) @map("is_hidden")
   createdAt DateTime @default(now()) @map("created_at")
-  updatedA  DateTime @default(now()) @updatedAt @map("updated_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  // Relations
+  user    User    @relation(fields: [userId], references: [id])
+  userId  Int     @map("user_id")
+  post    Post    @relation(fields: [postId], references: [id])
+  postId  Int     @map("post_id")
+  replies Reply[]
 }
 
 model Reply {
   id        Int      @id @default(autoincrement())
   content   String
   likes     Int?     @default(0)
-  user      User     @relation(fields: [userId], references: [id])
-  userId    Int      @map("user_id")
-  comment   Comment  @relation(fields: [commentId], references: [id])
-  commentId Int      @map("comment_id")
-  // ref to the parent reply, 
-  parent    Reply?   @relation("ReplyToParent", fields: [parentId], references: [id])
-  parentId  Int?     @map("parent_id")
-  children  Reply[]  @relation("ReplyToParent")
+  isHidden  Boolean  @default(false) @map("is_hidden")
   createdAt DateTime @default(now()) @map("created_at")
-  updatedA  DateTime @default(now()) @updatedAt @map("updated_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  // Relations
+  user      User    @relation(fields: [userId], references: [id])
+  userId    Int     @map("user_id")
+  comment   Comment @relation(fields: [commentId], references: [id])
+  commentId Int     @map("comment_id")
+  // ref to the parent reply, 
+  parent    Reply?  @relation("ReplyToParent", fields: [parentId], references: [id])
+  parentId  Int?    @map("parent_id")
+  children  Reply[] @relation("ReplyToParent")
 }
 
 model Reaction {
   id        Int          @id @default(autoincrement())
   type      ReactionType
-  user      User         @relation(fields: [userId], references: [id])
-  userId    Int
-  post      Post         @relation(fields: [postId], references: [id])
-  postId    Int
-  createdAt DateTime     @default(now())
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @default(now()) @updatedAt @map("updated_at")
+
+  // Relations
+  user   User @relation(fields: [userId], references: [id])
+  userId Int
+  post   Post @relation(fields: [postId], references: [id])
+  postId Int
 
   @@unique([userId, postId])
+  @@index([postId])
 }
 
 model Library {
   id          Int      @id @default(autoincrement())
-  description String
-  fileUrl     String   @map("file_url")
-  stars       Int
-  post        Post[]
+  description String   @db.Text
+  url         String   @map("file_url")
+  name        String   @map("file_name")
+  size        Int      @map("file_size")
+  mimeType    String   @map("mime_type")
+  stars       Int?     @default(0)
+  isPublic    Boolean  @default(true)
   createdAt   DateTime @default(now()) @map("created_at")
-  updatedA    DateTime @default(now()) @updatedAt @map("updated_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+
+  // Relations
+  // post Post[]
 }
 
 model PostUploads {
-  id     Int    @id @default(autoincrement())
-  url    String
-  post   Post   @relation(fields: [postId], references: [id])
-  postId Int    @map("post_id")
-
+  id        Int      @id @default(autoincrement())
+  url       String   @map("image_url")
+  name      String   @map("file_name")
+  size      Int      @map("file_size")
+  mimeType  String   @map("mime_type")
   createdAt DateTime @default(now()) @map("created_at")
-  updatedA  DateTime @default(now()) @updatedAt @map("updated_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
+  // Relations
+  post   Post @relation(fields: [postId], references: [id])
+  postId Int  @map("post_id")
+
+  @@index([postId])
   @@map("Post_Uploads")
 }
 

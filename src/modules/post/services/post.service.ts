@@ -3,49 +3,116 @@ import { PrismaService } from 'src/modules/database/prisma.service';
 import { Post, Prisma, ReactionType, User } from '@prisma/client';
 import { CreatePostDto } from '../dto/create-post.dto';
 import { UpdatePostDto } from '../dto/update-post.dto';
+import { StorageService } from 'src/modules/storage/storage.service';
 
 @Injectable()
 export class PostService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private storageService: StorageService,
+  ) {}
 
-  // todo: in file case:
-  // upload file, (in case of wrong throw an exception)
-  //  create a new file with the returned url, using createOrConnect in create fun
-  async create(createPostDto: CreatePostDto, user: User) {
-    const { tagIds, ...rest } = createPostDto;
+  /**
+   * Creates a new post.
+   *
+   * @param createPostDto - The data transfer object containing the details of the post to be created.
+   * @param user - The user creating the post.
+   * @param uploads - An object containing the images and file to be uploaded.
+   * @returns The created post.
+   * @throws {BadRequestException} If the user's tag is not found.
+   * @throws {BadRequestException} If the user's tag is not included in the provided tags.
+   * @throws {BadRequestException} If the provided tags are not valid.
+   * @throws {BadRequestException} If all tags are not from the same college as the user's tag.
+   */
+  async create(
+    createPostDto: CreatePostDto,
+    user: User,
+    uploads: { images?: Express.Multer.File[]; file?: Express.Multer.File[] },
+  ) {
+    const { tagIds, content } = createPostDto;
 
-    let tagIdsAsNumbers;
-    // Convert the tagIds array into numbers
-    if (tagIds) {
-      tagIdsAsNumbers = tagIds.map((id) => Number(id));
-  
-      // Find the tags using the converted tagIds
-      const tags = await this.prisma.tag.findMany({
-        where: { id: { in: tagIdsAsNumbers } },
-      });
-  
-      if (tags.length !== tagIdsAsNumbers.length) {
-        throw new BadRequestException('Some tags do not exist');
-      }
+    // Tags validation
+    // getting user tag info
+    const userTag = await this.prisma.tag.findUnique({
+      where: { id: user.tagId },
+      select: {
+        id: true,
+        collegeEn: true,
+        name: true,
+      },
+    });
+
+    if (!userTag) {
+      throw new BadRequestException("User's tag not found");
     }
+
+    // check of all tags it's exists and within the same college
+    const tags = await this.prisma.tag.findMany({
+      where: { id: { in: tagIds } },
+    });
+
+    if (tags.length !== tagIds.length && tags.length !== 0) {
+      throw new BadRequestException(
+        'Tags not valid, please provide valid tags',
+      );
+    }
+
+    const invalidTags = tags.filter(
+      (tag) => tag.collegeEn !== userTag.collegeEn,
+    );
+    if (invalidTags.length > 0) {
+      throw new BadRequestException(
+        `All tags must be from the same college as the user's tag (${userTag.name})`,
+      );
+    }
+
+    // Upload images and file, if exists
+    const imageUrls =
+      uploads && uploads.images
+        ? await this.storageService.uploadImages(uploads.images)
+        : [];
+    const file =
+      uploads && uploads.file
+        ? await this.storageService.uploadPDF(uploads.file[0])
+        : null;
 
     const post = await this.prisma.post.create({
       data: {
-        ...rest,
+        content,
+        ...(imageUrls && {
+          postUploads: {
+            create: imageUrls.map((el) => ({
+              url: el.url,
+              name: el.fileName,
+              size: el.fileSize,
+              mimeType: el.mimeType,
+            })),
+          },
+        }),
+        ...(file && {
+          fileUrl: file.url,
+          fileName: file.fileName,
+        }),
         user: {
           connect: { id: user.id },
         },
         tags: {
-          connect: tagIdsAsNumbers.map((tagId) => ({ id: tagId })),
+          connect: tagIds.map((tagId) => ({ id: tagId })),
         },
       },
     });
 
-    return post;
+    return this.prisma.post.findUnique({
+      where: {
+        id: post.id,
+      },
+      include: { postUploads: true },
+    });
   }
 
   async findAll(user: User): Promise<Post[]> {
     const id = user.tagId;
+
     const posts = await this.prisma.post.findMany({
       where: {
         tags: {

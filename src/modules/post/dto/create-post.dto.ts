@@ -1,13 +1,26 @@
-import { IsArray, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsArray,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
+import { CreateFileDto } from 'src/common/dtos/create-file.dto';
 
-//todo: convert tagIds type to number[], and reflect this changes in postService.
 export class CreatePostDto {
   @IsNotEmpty()
   @IsString()
   content: string;
 
-  @IsOptional()
   @IsArray()
-  @IsString({ each: true })
-  tagIds: string[];
+  @IsNumber({}, { each: true })
+  @Type(() => Number)
+  tagIds: number[];
+
+  // @IsOptional()
+  // @ValidateNested()
+  // @Type(() => CreateFileDto)
+  // fileData?: CreateFileDto;
 }
