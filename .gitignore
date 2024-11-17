@@ -5,10 +5,6 @@
 /todos.ts
 .todos.ts
 .todos
-Dockerfile
-Dockerfile.prod
-docker-compose.yml
-.dockerignore
 .vscode/
 pgdata
 # Logs
