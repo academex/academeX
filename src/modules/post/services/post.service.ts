@@ -161,18 +161,70 @@ export class PostService {
   }
 
   async reactToPost(id: number, user: User, type: ReactionType) {
-    const react = await this.prisma.reaction.create({
-      data: {
-        type,
-        user: {
-          connect: { id: user.id },
-        },
-        post: {
-          connect: { id },
+    // check if the user has already reacted to the post
+    const existingReaction = await this.prisma.reaction.findUnique({
+      where: {
+        userId_postId: {
+          userId: user.id,
+          postId: id,
         },
       },
     });
-    return react;
+
+    if (existingReaction) {
+      if (existingReaction.type === type) {
+        // If the reaction type is the same, delete the reaction (toggle off)
+        await this.prisma.reaction.delete({
+          where: {
+            id: existingReaction.id,
+          },
+        });
+        return { message: 'Reaction removed' };
+      } else {
+        // If the reaction type is different, update the reaction
+        const updatedReaction = await this.prisma.reaction.update({
+          where: {
+            id: existingReaction.id,
+          },
+          data: {
+            type,
+          },
+        });
+        return updatedReaction;
+      }
+    } else {
+      // If no existing reaction, create a new one
+      const newReaction = await this.prisma.reaction.create({
+        data: {
+          type,
+          user: {
+            connect: { id: user.id },
+          },
+          post: {
+            connect: { id },
+          },
+        },
+      });
+      return newReaction;
+    }
+  }
+
+  async getReactionsCount(postId: number) {
+    const reactions = await this.prisma.reaction.groupBy({
+      by: ['type'],
+      where: {
+        postId,
+      },
+      _count: true,
+    });
+
+    return reactions.reduce(
+      (acc, curr) => {
+        acc[curr.type] = curr._count;
+        return acc;
+      },
+      {} as Record<ReactionType, number>,
+    );
   }
 
   update(id: number, updatePostDto: UpdatePostDto) {

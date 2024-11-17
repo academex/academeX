@@ -1,23 +1,148 @@
+version: '3.8'
+
 services:
-  db:
-    image: postgres
-    restart: always
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=root
-      - POSTGRES_DB=academex
-    container_name: postgres
-    volumes:
-      - ./pgdata:/var/lib/postgresql/data
-    ports:
-      - '5433:5432'
-  academex_api:
+  api:
+    container_name: academex_api
     build:
       context: .
       dockerfile: Dockerfile
     ports:
       - '3000:3000'
-    volumes:
-      - ./src:/usr/src/app/src
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:root@db:5432/academex
+      - DATABASE_URL_UNPOOLED=postgresql://postgres:root@db:5432/academex
     depends_on:
       - db
+      - redis
+    restart: unless-stopped
+    networks:
+      - academex-network
+
+  db:
+    image: postgres:15-alpine
+    container_name: academex_db
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=root
+      - POSTGRES_DB=academex
+    ports:
+      - '5433:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - academex-network
+    restart: unless-stopped
+
+  redis:
+    image: redis:alpine
+    container_name: academex_redis
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    networks:
+      - academex-network
+    restart: unless-stopped
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: academex_pgadmin
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@admin.com
+      - PGADMIN_DEFAULT_PASSWORD=admin
+    ports:
+      - '5050:80'
+    depends_on:
+      - db
+    networks:
+      - academex-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  academex-network:
+    driver: bridge
+
+#  Development:
+# version: '3.8'
+
+# services:
+#   api:
+#     container_name: academex_api_dev
+#     build: 
+#       context: .
+#       dockerfile: Dockerfile.dev
+#     ports:
+#       - '3000:3000'
+#     environment:
+#       - NODE_ENV=development
+#       - DATABASE_URL=postgresql://postgres:root@db:5432/academex
+#       - DATABASE_URL_UNPOOLED=postgresql://postgres:root@db:5432/academex
+#     volumes:
+#       - .:/app
+#       - /app/node_modules
+#     command: npm run start:dev
+#     depends_on:
+#       - db
+#       - redis
+#     networks:
+#       - academex-network-dev
+
+#   db:
+#     image: postgres:15-alpine
+#     container_name: academex_db_dev
+#     environment:
+#       - POSTGRES_USER=postgres
+#       - POSTGRES_PASSWORD=root
+#       - POSTGRES_DB=academex
+#     ports:
+#       - '5433:5432'
+#     volumes:
+#       - postgres_data_dev:/var/lib/postgresql/data
+#     networks:
+#       - academex-network-dev
+
+#   redis:
+#     image: redis:alpine
+#     container_name: academex_redis_dev
+#     ports:
+#       - '6379:6379'
+#     volumes:
+#       - redis_data_dev:/data
+#     networks:
+#       - academex-network-dev
+
+# volumes:
+#   postgres_data_dev:
+#   redis_data_dev:
+
+# networks:
+#   academex-network-dev:
+#     driver: bridge
+# services:
+#   db:
+#     image: postgres
+#     restart: always
+#     environment:
+#       - POSTGRES_USER=postgres
+#       - POSTGRES_PASSWORD=root
+#       - POSTGRES_DB=academex
+#     container_name: postgres
+#     volumes:
+#       - ./pgdata:/var/lib/postgresql/data
+#     ports:
+#       - '5433:5432'
+#   academex_api:
+#     build:
+#       context: .
+#       dockerfile: Dockerfile
+#     ports:
+#       - '3000:3000'
+#     volumes:
+#       - ./src:/usr/src/app/src
+#     depends_on:
+#       - db

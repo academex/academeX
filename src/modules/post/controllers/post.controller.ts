@@ -59,6 +59,7 @@ export class PostController {
   ) {
     return this.postService.reactToPost(postId, user, type);
   }
+  
   // @Patch(':id')
   // update(@Param('id') id: string, @Body() updatePostDto: UpdatePostDto) {
   //   return this.postService.update(+id, updatePostDto);
