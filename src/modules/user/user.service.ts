@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PrismaService } from '../database/prisma.service';
-import {  User } from '@prisma/client';
+import { User } from '@prisma/client';
 import { hash } from 'bcrypt';
 import { SignupDto } from '../auth/dto/signup.dto';
 
@@ -19,7 +19,11 @@ export class UserService {
 
     const [tag, userExists] = await this.prisma.$transaction([
       this.prisma.tag.findUnique({ where: { id: tagId } }),
-      this.prisma.user.findUnique({ where: { username: userData.username } }),
+      this.prisma.user.findFirst({
+        where: {
+          OR: [{ email: userData.email }, { username: userData.username }],
+        },
+      }),
     ]);
 
     if (!tag) throw new NotFoundException('tag not found');
@@ -62,6 +66,15 @@ export class UserService {
     const user = await this.prisma.user.findUnique({ where: { username } });
     if (!user) throw new NotFoundException('user not found');
     return user;
+  }
+
+  async findOneByUsernameOrEmail(
+    email: string,
+    username: string,
+  ): Promise<User> {
+    return await this.prisma.user.findFirst({
+      where: { OR: [{ email }, { username }] },
+    });
   }
 
   findAll() {

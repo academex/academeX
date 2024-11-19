@@ -67,6 +67,7 @@ export class PostService {
     }
 
     // Upload images and file, if exists
+    console.log('uploads.file[0]', uploads.images);
     const imageUrls =
       uploads && uploads.images
         ? await this.storageService.uploadImages(uploads.images)
@@ -76,38 +77,46 @@ export class PostService {
         ? await this.storageService.uploadPDF(uploads.file[0])
         : null;
 
-    const post = await this.prisma.post.create({
-      data: {
-        content,
-        ...(imageUrls && {
-          postUploads: {
-            create: imageUrls.map((el) => ({
-              url: el.url,
-              name: el.fileName,
-              size: el.fileSize,
-              mimeType: el.mimeType,
-            })),
+    console.log('images', imageUrls, 'file', file);
+    if (imageUrls && file) {
+      const post = await this.prisma.post.create({
+        data: {
+          content,
+          ...(imageUrls && {
+            postUploads: {
+              create: imageUrls.map((el) => ({
+                url: el.url,
+                name: el.fileName,
+                size: el.fileSize,
+                mimeType: el.mimeType,
+              })),
+            },
+          }),
+          ...(file && {
+            fileUrl: file.url,
+            fileName: file.fileName,
+          }),
+          user: {
+            connect: { id: user.id },
           },
-        }),
-        ...(file && {
-          fileUrl: file.url,
-          fileName: file.fileName,
-        }),
-        user: {
-          connect: { id: user.id },
+          tags: {
+            connect: tagIds.map((tagId) => ({ id: tagId })),
+          },
         },
-        tags: {
-          connect: tagIds.map((tagId) => ({ id: tagId })),
-        },
-      },
-    });
+      });
 
-    return this.prisma.post.findUnique({
-      where: {
-        id: post.id,
-      },
-      include: { postUploads: true },
-    });
+      if (!post)
+        throw new BadRequestException(
+          'something went wrong while creating the post',
+        );
+
+      return {
+        ...post,
+        user: { id: user.id },
+        images: imageUrls,
+        file,
+      };
+    }
   }
 
   async findAll(user: User): Promise<Post[]> {

@@ -16,6 +16,7 @@ import { CreatePostDto } from '../dto/create-post.dto';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { FileValidationPipe } from 'src/common/validators/file-validation.pipe';
 import { StorageService } from 'src/modules/storage/storage.service';
+import { ReactToPostDto } from '../dto/react-post.dto';
 
 @Controller('post')
 export class PostController {
@@ -55,11 +56,11 @@ export class PostController {
   reactToPost(
     @Param('id', ParseIntPipe) postId: number,
     @UserIdentity() user: User,
-    @Body('type', new ParseEnumPipe(ReactionType)) type,
+    @Body() { type }: ReactToPostDto,
   ) {
     return this.postService.reactToPost(postId, user, type);
   }
-  
+
   // @Patch(':id')
   // update(@Param('id') id: string, @Body() updatePostDto: UpdatePostDto) {
   //   return this.postService.update(+id, updatePostDto);

@@ -29,7 +29,7 @@ export class AuthService {
       resetPasswordTokenExpires,
       ...user
     } = userExists;
-    
+
     return {
       user,
       accessToken: this.JwtService.sign({ username }),

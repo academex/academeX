@@ -36,7 +36,10 @@ export class TagController {
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.tagService.findOne(id);
   }
-
+  // @Get('colleges')
+  // async getCollegesWithMajors() {
+  //   return this.tagService.getCollegesWithMajors();
+  // }
   //admin role
   @Patch(':id')
   update(
@@ -52,5 +55,3 @@ export class TagController {
     return this.tagService.remove(id);
   }
 }
-
-// get

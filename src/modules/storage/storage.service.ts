@@ -32,7 +32,6 @@ export class StorageService {
         contentType: file.mimetype,
         upsert: false,
       });
-
     if (error) {
       throw new BadRequestException(`Error uploading file: ${error.message}`);
     }
@@ -41,6 +40,10 @@ export class StorageService {
       .getClient()
       .storage.from(this.bucket)
       .getPublicUrl(filePath);
+
+    if (!urlData) {
+      throw new BadRequestException(`Error getting public URL: ${urlData}`);
+    }
 
     return {
       path: data.path,
@@ -51,9 +54,7 @@ export class StorageService {
     };
   }
 
-  async uploadImages(
-    images: Express.Multer.File[],
-  ): Promise<
+  async uploadImages(images: Express.Multer.File[]): Promise<
     Array<{
       path: string;
       url: string;
