@@ -33,49 +33,34 @@ export class TagService {
   }
 
   async findOne(id: number): Promise<Tag> {
-    console.log('in findOne with id', id);
     const tag = await this.prisma.tag.findUnique({ where: { id } });
-    console.log('tag after getting it', tag);
     if (!tag) throw new NotFoundException('tag not found');
     return tag;
   }
 
-  async getCollegesWithMajors() {
-    // const tags = await this.prisma.tag.groupBy({
-    //   by: ['college_en', 'college_ar', 'major_en', 'major_ar', 'name'],
-    //   orderBy: [{ college_en: 'asc' }, { major_en: 'asc' }],
-    // });
-
-    // Efficiently transform the data in memory
-    // return tags.reduce((colleges, tag) => {
-    //   const existingCollege = colleges.find(
-    //     (c) => c.college_en === tag.college_en,
-    //   );
-
-    //   if (existingCollege) {
-    //     existingCollege.majors.push({
-    //       major_en: tag.major_en,
-    //       major_ar: tag.major_ar,
-    //       name: tag.name,
-    //     });
-    //   } else {
-    //     colleges.push({
-    //       college_en: tag.college_en,
-    //       college_ar: tag.college_ar,
-    //       majors: [
-    //         {
-    //           major_en: tag.major_en,
-    //           major_ar: tag.major_ar,
-    //           name: tag.name,
-    //         },
-    //       ],
-    //     });
-    //   }
-
-    //   return colleges;
-    // }, []);
+  async getColleges(): Promise<{ collegeEn: string; collegeAr: string }[]> {
+    const colleges = await this.prisma.tag.findMany({
+      select: {
+        collegeAr: true,
+        collegeEn: true,
+      },
+      distinct: ['collegeEn', 'collegeAr'],
+    });
+    console.log('colleges', colleges);
+    return colleges;
   }
 
+  async getMajorsByCollege(collegeEn: string): Promise<Tag[]> {
+    console.log('collegeEn', collegeEn);
+    if (!collegeEn) throw new BadRequestException('missing collegeEn prop!!');
+    const tags = await this.prisma.tag.findMany({
+      where: {
+        collegeEn,
+      },
+    });
+    console.log('tags', tags);
+    return tags;
+  }
   update(id: number, updateTagDto: UpdateTagDto) {
     return `This action updates a #${id} tag`;
   }
