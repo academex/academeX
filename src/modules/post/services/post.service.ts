@@ -67,7 +67,6 @@ export class PostService {
     }
 
     // Upload images and file, if exists
-    console.log('uploads.file[0]', uploads.images);
     const imageUrls =
       uploads && uploads.images
         ? await this.storageService.uploadImages(uploads.images)
@@ -77,7 +76,6 @@ export class PostService {
         ? await this.storageService.uploadPDF(uploads.file[0])
         : null;
 
-    console.log('images', imageUrls, 'file', file);
     if (imageUrls && file) {
       const post = await this.prisma.post.create({
         data: {
