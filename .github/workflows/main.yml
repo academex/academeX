@@ -11,7 +11,7 @@ jobs:
 
     steps:
       - name: Render server
-        uses: khaleda-02/academeX
+        uses: khaleda-02/academeX@main
         with:
           service-id: ${{ secrets.SERVICE_ID }}
           api-key: ${{ secrets.RENDER_API_KEY }}
