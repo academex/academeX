@@ -51,7 +51,7 @@ export class PostService {
       where: { id: { in: tagIds } },
     });
 
-    if (tags.length !== tagIds.length && tags.length !== 0) {
+    if (tags.length != tagIds.length && tagIds.length !== 0) {
       throw new BadRequestException(
         'Tags not valid, please provide valid tags',
       );
@@ -76,45 +76,43 @@ export class PostService {
         ? await this.storageService.uploadPDF(uploads.file[0])
         : null;
 
-    if (imageUrls && file) {
-      const post = await this.prisma.post.create({
-        data: {
-          content,
-          ...(imageUrls && {
-            postUploads: {
-              create: imageUrls.map((el) => ({
-                url: el.url,
-                name: el.fileName,
-                size: el.fileSize,
-                mimeType: el.mimeType,
-              })),
-            },
-          }),
-          ...(file && {
-            fileUrl: file.url,
-            fileName: file.fileName,
-          }),
-          user: {
-            connect: { id: user.id },
+    const post = await this.prisma.post.create({
+      data: {
+        content,
+        ...(imageUrls && {
+          postUploads: {
+            create: imageUrls.map((el) => ({
+              url: el.url,
+              name: el.fileName,
+              size: el.fileSize,
+              mimeType: el.mimeType,
+            })),
           },
-          tags: {
-            connect: tagIds.map((tagId) => ({ id: tagId })),
-          },
+        }),
+        ...(file && {
+          fileUrl: file.url,
+          fileName: file.fileName,
+        }),
+        user: {
+          connect: { id: user.id },
         },
-      });
+        tags: {
+          connect: tagIds.map((tagId) => ({ id: tagId })),
+        },
+      },
+    });
 
-      if (!post)
-        throw new BadRequestException(
-          'something went wrong while creating the post',
-        );
+    if (!post)
+      throw new BadRequestException(
+        'something went wrong while creating the post',
+      );
 
-      return {
-        ...post,
-        user: { id: user.id },
-        images: imageUrls,
-        file,
-      };
-    }
+    return {
+      ...post,
+      user: { id: user.id },
+      images: imageUrls,
+      file,
+    };
   }
 
   async findAll(user: User): Promise<Post[]> {

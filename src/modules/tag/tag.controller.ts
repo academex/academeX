@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   ParseIntPipe,
+  Query,
 } from '@nestjs/common';
 import { TagService } from './tag.service';
 import { CreateTagDto } from './dto/create-tag.dto';
@@ -84,7 +85,7 @@ export class TagController {
 
   @Public()
   @Get('majors')
-  getMajorsByCollege(@Body() { collegeEn }: { collegeEn: string }) {
+  getMajorsByCollege(@Query('collegeEn') collegeEn: string) {
     return this.tagService.getMajorsByCollege(collegeEn);
   }
 

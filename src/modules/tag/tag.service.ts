@@ -46,21 +46,19 @@ export class TagService {
       },
       distinct: ['collegeEn', 'collegeAr'],
     });
-    console.log('colleges', colleges);
     return colleges;
   }
 
   async getMajorsByCollege(collegeEn: string): Promise<Tag[]> {
-    console.log('collegeEn', collegeEn);
     if (!collegeEn) throw new BadRequestException('missing collegeEn prop!!');
     const tags = await this.prisma.tag.findMany({
       where: {
         collegeEn,
       },
     });
-    console.log('tags', tags);
     return tags;
   }
+
   update(id: number, updateTagDto: UpdateTagDto) {
     return `This action updates a #${id} tag`;
   }

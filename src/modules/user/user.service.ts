@@ -51,7 +51,6 @@ export class UserService {
   }
   async findOneByIdAndThrow(id: number): Promise<User | HttpException> {
     const user = await this.prisma.user.findUnique({ where: { id } });
-    console.log('user in findOne in userService', user);
     if (!user) throw new NotFoundException('user not found');
     return user;
   }
