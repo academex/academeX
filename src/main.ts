@@ -5,6 +5,7 @@ import { JwtService } from '@nestjs/jwt';
 import { UserService } from './modules/user/user.service';
 import { AuthGuard } from './common/guards/auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
+import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -16,6 +17,9 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
     }),
   );
+
+  // interceptors
+  app.useGlobalInterceptors(new ResponseInterceptor());
 
   // Global Guards
   const reflector = app.get(Reflector);
