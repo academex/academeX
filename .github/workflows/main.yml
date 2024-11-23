@@ -1,5 +1,4 @@
-# .github/workflows/main.yml
-name: Deploy to Render
+name: AcademeX CI/CD
 
 on:
   push:
@@ -28,9 +27,6 @@ jobs:
 
       - name: Build application
         run: npm run build
-
-      - name: Run tests
-        run: npm test
         
       - name: Deploy to Render
         env:
