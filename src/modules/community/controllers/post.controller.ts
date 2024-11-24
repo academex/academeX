@@ -8,6 +8,7 @@ import {
   ParseEnumPipe,
   UseInterceptors,
   UploadedFiles,
+  Query,
 } from '@nestjs/common';
 import { ReactionType, User } from '@prisma/client';
 import { UserIdentity } from 'src/common/decorators/user.decorator';
@@ -17,6 +18,7 @@ import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { FileValidationPipe } from 'src/common/validators/file-validation.pipe';
 import { StorageService } from 'src/modules/storage/storage.service';
 import { ReactToPostDto } from '../dto/react-post.dto';
+import { FilterPostsDto } from '../dto/filter-posts.dto';
 
 @Controller('post')
 export class PostController {
@@ -41,10 +43,11 @@ export class PostController {
     return this.postService.create(createPostDto, user, uploads);
   }
 
-  //todo: get the query param and named it tag, if it's exists return tag's posts, if not return the user's tag's post.
   @Get()
-  findAll(@UserIdentity() user: User) {
-    return this.postService.findAll(user);
+  findAll(@UserIdentity() user: User, @Query() filterPostsDto: FilterPostsDto) {
+    const paginationOptions = this.buildPaginationOptions(filterPostsDto);
+    const filteringOptions = this.buildFilteringOptions(filterPostsDto);
+    return this.postService.findAll(user, paginationOptions, filteringOptions);
   }
 
   @Get(':id')
@@ -61,13 +64,20 @@ export class PostController {
     return this.postService.reactToPost(postId, user, type);
   }
 
-  // @Patch(':id')
-  // update(@Param('id') id: string, @Body() updatePostDto: UpdatePostDto) {
-  //   return this.postService.update(+id, updatePostDto);
-  // }
+  buildFilteringOptions(filters: FilterPostsDto) {
+    const tagId = parseInt(filters.tagId);
+    return { tagId };
+  }
+  buildPaginationOptions(filters: FilterPostsDto) {
+    const page = parseInt(filters.page) || 1;
+    const limit = parseInt(filters.limit) || 10;
 
-  // @Delete(':id')
-  // remove(@Param('id') id: string) {
-  //   return this.postService.remove(+id);
-  // }
+    const skip = (page - 1) * limit;
+    const take = limit;
+
+    return {
+      skip,
+      take,
+    };
+  }
 }

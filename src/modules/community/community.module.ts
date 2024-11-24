@@ -9,8 +9,8 @@ import { CommentService, PostService, ReplyService } from './services';
 import { StorageModule } from '../storage/storage.module';
 
 @Module({
-  imports: [DatabaseModule,StorageModule],
+  imports: [DatabaseModule, StorageModule],
   controllers: [PostController, CommentController, ReplyController],
   providers: [PostService, CommentService, ReplyService],
 })
-export class PostModule {}
+export class CommunityModule {}

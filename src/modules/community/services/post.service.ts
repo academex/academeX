@@ -4,6 +4,7 @@ import { Post, Prisma, ReactionType, User } from '@prisma/client';
 import { CreatePostDto } from '../dto/create-post.dto';
 import { UpdatePostDto } from '../dto/update-post.dto';
 import { StorageService } from 'src/modules/storage/storage.service';
+import { take } from 'rxjs';
 
 @Injectable()
 export class PostService {
@@ -12,21 +13,9 @@ export class PostService {
     private storageService: StorageService,
   ) {}
 
-  /**
-   * Creates a new post.
-   *
-   * @param createPostDto - The data transfer object containing the details of the post to be created.
-   * @param user - The user creating the post.
-   * @param uploads - An object containing the images and file to be uploaded.
-   * @returns The created post.
-   * @throws {BadRequestException} If the user's tag is not found.
-   * @throws {BadRequestException} If the user's tag is not included in the provided tags.
-   * @throws {BadRequestException} If the provided tags are not valid.
-   * @throws {BadRequestException} If all tags are not from the same college as the user's tag.
-   */
   async create(
     createPostDto: CreatePostDto,
-    user: User,
+    { tagId, id, username, photoUrl }: User,
     uploads: { images?: Express.Multer.File[]; file?: Express.Multer.File[] },
   ) {
     const { tagIds, content } = createPostDto;
@@ -34,7 +23,7 @@ export class PostService {
     // Tags validation
     // getting user tag info
     const userTag = await this.prisma.tag.findUnique({
-      where: { id: user.tagId },
+      where: { id: tagId },
       select: {
         id: true,
         collegeEn: true,
@@ -76,93 +65,148 @@ export class PostService {
         ? await this.storageService.uploadPDF(uploads.file[0])
         : null;
 
-    const post = await this.prisma.post.create({
-      data: {
-        content,
-        ...(imageUrls && {
-          postUploads: {
-            create: imageUrls.map((el) => ({
-              url: el.url,
-              name: el.fileName,
-              size: el.fileSize,
-              mimeType: el.mimeType,
-            })),
+    const { userId, fileName, fileUrl, ...rest } =
+      await this.prisma.post.create({
+        data: {
+          content,
+          ...(imageUrls && {
+            postUploads: {
+              create: imageUrls.map((el) => ({
+                url: el.url,
+                name: el.fileName,
+                size: el.fileSize,
+                mimeType: el.mimeType,
+              })),
+            },
+          }),
+          ...(file && {
+            fileUrl: file.url,
+            fileName: file.fileName,
+          }),
+          user: {
+            connect: { id },
           },
-        }),
-        ...(file && {
-          fileUrl: file.url,
-          fileName: file.fileName,
-        }),
-        user: {
-          connect: { id: user.id },
+          tags: {
+            connect: tagIds.map((tagId) => ({ id: tagId })),
+          },
         },
-        tags: {
-          connect: tagIds.map((tagId) => ({ id: tagId })),
-        },
-      },
-    });
+      });
 
-    if (!post)
+    if (!rest)
       throw new BadRequestException(
         'something went wrong while creating the post',
       );
 
     return {
-      ...post,
-      user: { id: user.id },
-      images: imageUrls,
-      file,
+      ...rest,
+      file: { name: fileName, url: fileUrl },
+      images: imageUrls.length,
+      user: { id, username, photoUrl },
     };
   }
 
-  async findAll(user: User): Promise<Post[]> {
-    const id = user.tagId;
+  async findAll(
+    user: User,
+    paginationOptions: { skip: number; take: number },
+    filteringOptions: { tagId: number },
+  ) {
+    const tagId = filteringOptions.tagId || user.tagId;
 
     const posts = await this.prisma.post.findMany({
       where: {
         tags: {
-          some: { id },
+          some: { id: tagId },
         },
       },
-      // in reactions: just the total number, num of each type, the first 2 users
-      include: {
-        user: { select: { username: true, id: true, photoUrl: true } },
-        reactions: {
+      select: {
+        id: true,
+        content: true,
+        postUploads: true,
+        fileUrl: true,
+        fileName: true,
+        createdAt: true,
+        updatedAt: true,
+        tags: { select: { id: true, name: true } },
+        user: {
           select: {
+            username: true,
+            id: true,
+            photoUrl: true,
+          },
+        },
+        reactions: {
+          take: 2,
+          select: {
+            id: true,
             type: true,
             user: {
               select: {
+                id: true,
                 username: true,
-                role: true,
+                photoUrl: true,
               },
             },
           },
         },
+        _count: {
+          select: {
+            reactions: true,
+            comments: true,
+          },
+        },
       },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      ...paginationOptions,
     });
-    return posts;
+
+    return posts.map((post) => this.serializePost(post));
   }
 
-  async findOne(id: number): Promise<Post> {
+  async findOne(id: number) {
     const post = await this.prisma.post.findUnique({
       where: { id },
-      include: {
-        user: { select: { username: true, id: true, photoUrl: true } },
-        reactions: {
+      select: {
+        id: true,
+        content: true,
+        postUploads: true,
+        fileUrl: true,
+        fileName: true,
+        createdAt: true,
+        updatedAt: true,
+        tags: { select: { id: true, name: true } },
+        user: {
           select: {
+            username: true,
+            id: true,
+            photoUrl: true,
+          },
+        },
+        reactions: {
+          take: 2,
+          select: {
+            id: true,
             type: true,
             user: {
               select: {
+                id: true,
                 username: true,
-                role: true,
+                photoUrl: true,
               },
             },
           },
         },
+        _count: {
+          select: {
+            reactions: true,
+            comments: true,
+          },
+        },
       },
     });
-    if (!post) throw new BadRequestException('no post with this id');
-    return post;
+    if (!post) throw new BadRequestException(`No post with this Id: ${id}`);
+    return this.serializePost(post);
   }
 
   async reactToPost(id: number, user: User, type: ReactionType) {
@@ -232,11 +276,28 @@ export class PostService {
     );
   }
 
-  update(id: number, updatePostDto: UpdatePostDto) {
-    return `This action updates a #${id} post`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} post`;
+  //! HELPER FUNCTIONS
+  serializePost(post) {
+    return {
+      id: post.id,
+      content: post.content,
+      createdAt: post.createdAt,
+      updatedAt: post.updatedAt,
+      file: {
+        url: post.fileUrl || null,
+        name: post.fileName || null,
+      },
+      images: post.postUploads.map((upload) => ({
+        id: upload.id,
+        url: upload.url,
+      })),
+      tags: post.tags,
+      user: post.user,
+      reactions: {
+        count: post._count.reactions,
+        items: post.reactions,
+      },
+      comments: post._count.comments,
+    };
   }
 }

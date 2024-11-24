@@ -4,12 +4,11 @@ import { AppService } from './app.service';
 import { UserModule } from './modules/user/user.module';
 import { DatabaseModule } from './modules/database/database.module';
 import { AuthModule } from './modules/auth/auth.module';
-import { PostModule } from './modules/post/post.module';
 import { TagModule } from './modules/tag/tag.module';
-
+import { CommunityModule } from './modules/community/community.module';
 
 @Module({
-  imports: [UserModule, DatabaseModule, AuthModule, PostModule, TagModule],
+  imports: [UserModule, DatabaseModule, CommunityModule, AuthModule, TagModule],
   controllers: [AppController],
   providers: [AppService],
 })
