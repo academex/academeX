@@ -20,13 +20,11 @@ import { FileValidationPipe } from 'src/common/validators/file-validation.pipe';
 import { StorageService } from 'src/modules/storage/storage.service';
 import { ReactToPostDto } from '../dto/react-post.dto';
 import { FilterPostsDto } from '../dto/filter-posts.dto';
-import { SavePostService } from './../services/save-post.service';
 
 @Controller('post')
 export class PostController {
   constructor(
     private readonly postService: PostService,
-    private readonly savePostService: SavePostService,
     private storageService: StorageService,
   ) {}
 
