@@ -5,6 +5,8 @@ import { CreatePostDto } from '../dto/create-post.dto';
 import { UpdatePostDto } from '../dto/update-post.dto';
 import { StorageService } from 'src/modules/storage/storage.service';
 import { take } from 'rxjs';
+import { FilterPostsDto } from '../dto/filter-posts.dto';
+import { serializePost } from 'src/common/libs/serialize-post';
 
 @Injectable()
 export class PostService {
@@ -100,7 +102,7 @@ export class PostService {
     return {
       ...rest,
       file: { name: fileName, url: fileUrl },
-      images: imageUrls.length,
+      images: imageUrls,
       user: { id, username, photoUrl },
     };
   }
@@ -109,15 +111,22 @@ export class PostService {
     user: User,
     paginationOptions: { skip: number; take: number },
     filteringOptions: { tagId: number },
+    { page, limit }: FilterPostsDto,
   ) {
     const tagId = filteringOptions.tagId || user.tagId;
 
-    const posts = await this.prisma.post.findMany({
-      where: {
-        tags: {
-          some: { id: tagId },
-        },
+    const whereCondition = {
+      tags: {
+        some: { id: tagId },
       },
+    };
+
+    const totalPosts = await this.prisma.post.count({
+      where: whereCondition,
+    });
+
+    const posts = await this.prisma.post.findMany({
+      where: whereCondition,
       select: {
         id: true,
         content: true,
@@ -161,7 +170,16 @@ export class PostService {
       ...paginationOptions,
     });
 
-    return posts.map((post) => this.serializePost(post));
+    const data = posts.map((post) => serializePost(post));
+    return {
+      data,
+      meta: {
+        page,
+        limit,
+        PagesCount: Math.ceil(totalPosts / limit),
+        totalPosts,
+      },
+    };
   }
 
   async findOne(id: number) {
@@ -206,7 +224,7 @@ export class PostService {
       },
     });
     if (!post) throw new BadRequestException(`No post with this Id: ${id}`);
-    return this.serializePost(post);
+    return serializePost(post);
   }
 
   async reactToPost(id: number, user: User, type: ReactionType) {
@@ -277,27 +295,27 @@ export class PostService {
   }
 
   //! HELPER FUNCTIONS
-  serializePost(post) {
-    return {
-      id: post.id,
-      content: post.content,
-      createdAt: post.createdAt,
-      updatedAt: post.updatedAt,
-      file: {
-        url: post.fileUrl || null,
-        name: post.fileName || null,
-      },
-      images: post.postUploads.map((upload) => ({
-        id: upload.id,
-        url: upload.url,
-      })),
-      tags: post.tags,
-      user: post.user,
-      reactions: {
-        count: post._count.reactions,
-        items: post.reactions,
-      },
-      comments: post._count.comments,
-    };
-  }
+  // serializePost(post) {
+  //   return {
+  //     id: post.id,
+  //     content: post.content,
+  //     createdAt: post.createdAt,
+  //     updatedAt: post.updatedAt,
+  //     file: {
+  //       url: post.fileUrl || null,
+  //       name: post.fileName || null,
+  //     },
+  //     images: post.postUploads.map((upload) => ({
+  //       id: upload.id,
+  //       url: upload.url,
+  //     })),
+  //     tags: post.tags,
+  //     user: post.user,
+  //     reactions: {
+  //       count: post._count.reactions,
+  //       items: post.reactions,
+  //     },
+  //     comments: post._count.comments,
+  //   };
+  // }
 }
