@@ -9,6 +9,7 @@ import {
   UseInterceptors,
   UploadedFiles,
   Query,
+  Delete,
 } from '@nestjs/common';
 import { ReactionType, User } from '@prisma/client';
 import { UserIdentity } from 'src/common/decorators/user.decorator';
@@ -19,11 +20,13 @@ import { FileValidationPipe } from 'src/common/validators/file-validation.pipe';
 import { StorageService } from 'src/modules/storage/storage.service';
 import { ReactToPostDto } from '../dto/react-post.dto';
 import { FilterPostsDto } from '../dto/filter-posts.dto';
+import { SavePostService } from './../services/save-post.service';
 
 @Controller('post')
 export class PostController {
   constructor(
     private readonly postService: PostService,
+    private readonly savePostService: SavePostService,
     private storageService: StorageService,
   ) {}
 
@@ -47,14 +50,23 @@ export class PostController {
   findAll(@UserIdentity() user: User, @Query() filterPostsDto: FilterPostsDto) {
     const paginationOptions = this.buildPaginationOptions(filterPostsDto);
     const filteringOptions = this.buildFilteringOptions(filterPostsDto);
-    return this.postService.findAll(user, paginationOptions, filteringOptions);
+    return this.postService.findAll(
+      user,
+      paginationOptions,
+      filteringOptions,
+      filterPostsDto,
+    );
   }
+
 
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.postService.findOne(id);
   }
 
+
+
+  //! React to post
   @Post(':id/react')
   reactToPost(
     @Param('id', ParseIntPipe) postId: number,
@@ -64,13 +76,14 @@ export class PostController {
     return this.postService.reactToPost(postId, user, type);
   }
 
+  //! Helper Functions
   buildFilteringOptions(filters: FilterPostsDto) {
     const tagId = parseInt(filters.tagId);
     return { tagId };
   }
-  buildPaginationOptions(filters: FilterPostsDto) {
-    const page = parseInt(filters.page) || 1;
-    const limit = parseInt(filters.limit) || 10;
+  buildPaginationOptions({ page, limit }: FilterPostsDto) {
+    // const page = parseInt(filters.page) || 1;
+    // const limit = parseInt(filters.limit) || 10;
 
     const skip = (page - 1) * limit;
     const take = limit;
