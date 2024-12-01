@@ -6,7 +6,7 @@ import {
 import { CreateTagDto } from './dto/create-tag.dto';
 import { UpdateTagDto } from './dto/update-tag.dto';
 import { PrismaService } from '../database/prisma.service';
-import { Prisma, Tag } from '@prisma/client';
+import { Prisma, Tag, User } from '@prisma/client';
 
 @Injectable()
 export class TagService {
@@ -54,6 +54,20 @@ export class TagService {
     const tags = await this.prisma.tag.findMany({
       where: {
         collegeEn,
+      },
+    });
+    return tags;
+  }
+
+  async getCollegeTags(user: User): Promise<Tag[]> {
+    const { tagId } = user;
+    const userTag = await this.prisma.tag.findUnique({
+      where: { id: tagId },
+    });
+
+    const tags = await this.prisma.tag.findMany({
+      where: {
+        collegeEn: userTag.collegeEn,
       },
     });
     return tags;

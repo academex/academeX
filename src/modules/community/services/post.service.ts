@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/modules/database/prisma.service';
-import { Post, Prisma, ReactionType, User } from '@prisma/client';
+import { Post, Prisma, Reaction, ReactionType, User } from '@prisma/client';
 import { CreatePostDto } from '../dto/create-post.dto';
 import { UpdatePostDto } from '../dto/update-post.dto';
 import { StorageService } from 'src/modules/storage/storage.service';
@@ -102,7 +102,7 @@ export class PostService {
     return {
       ...rest,
       file: { name: fileName, url: fileUrl },
-      images: imageUrls,
+      images: imageUrls.map((el) => ({ name: el.fileName, url: el.url })),
       user: { id, username, photoUrl },
     };
   }
@@ -141,10 +141,12 @@ export class PostService {
             username: true,
             id: true,
             photoUrl: true,
+            firstName: true,
+            lastName: true,
           },
         },
         reactions: {
-          take: 2,
+          take: 3,
           select: {
             id: true,
             type: true,
@@ -156,6 +158,15 @@ export class PostService {
               },
             },
           },
+        },
+        SavedPost: {
+          where: {
+            userId: user.id,
+          },
+          select: {
+            id: true,
+          },
+          take: 1,
         },
         _count: {
           select: {
@@ -170,9 +181,23 @@ export class PostService {
       ...paginationOptions,
     });
 
-    const data = posts.map((post) => serializePost(post));
+    const data = await Promise.all(
+      posts.map(async (post) => {
+        const isReacted = await this.prisma.reaction.findFirst({
+          where: { userId: user.id, postId: post.id },
+        });
+        const readyPost = {
+          ...serializePost(post),
+          isSaved: post.SavedPost.length > 0,
+          isReacted: isReacted ? true : false,
+          reactionType: isReacted?.type || null,
+        };
+        return readyPost;
+      }),
+    );
+
     return {
-      data,
+      posts: data,
       meta: {
         page,
         limit,
@@ -182,7 +207,7 @@ export class PostService {
     };
   }
 
-  async findOne(id: number) {
+  async findOne(id: number, user: User) {
     const post = await this.prisma.post.findUnique({
       where: { id },
       select: {
@@ -199,10 +224,12 @@ export class PostService {
             username: true,
             id: true,
             photoUrl: true,
+            firstName: true,
+            lastName: true,
           },
         },
         reactions: {
-          take: 2,
+          take: 3,
           select: {
             id: true,
             type: true,
@@ -215,6 +242,17 @@ export class PostService {
             },
           },
         },
+        ...(user && {
+          SavedPost: {
+            where: {
+              userId: user.id,
+            },
+            select: {
+              id: true,
+            },
+            take: 1,
+          },
+        }),
         _count: {
           select: {
             reactions: true,
@@ -224,7 +262,16 @@ export class PostService {
       },
     });
     if (!post) throw new BadRequestException(`No post with this Id: ${id}`);
-    return serializePost(post);
+
+    const isReacted = await this.prisma.reaction.findFirst({
+      where: { userId: user.id, postId: post.id },
+    });
+    return {
+      ...serializePost(post),
+      isSaved: post?.SavedPost.length > 0,
+      isReacted: isReacted ? true : false,
+      reactionType: isReacted?.type || null,
+    };
   }
 
   async reactToPost(id: number, user: User, type: ReactionType) {
@@ -276,46 +323,26 @@ export class PostService {
     }
   }
 
-  async getReactionsCount(postId: number) {
-    const reactions = await this.prisma.reaction.groupBy({
-      by: ['type'],
-      where: {
-        postId,
-      },
-      _count: true,
-    });
+  async getPostReactions(postId: number) {
+    const query = Prisma.sql`
+        SELECT 
+            r."type",
+            json_agg(
+                json_build_object(
+                    'userId', u.id,
+                    'username', u.username,
+                    'firstName', u."first_name",
+                    'lastName', u."last_name",
+                    'photoUrl', u."photo_url"
+                )
+            ) as users,
+        CAST(COUNT(*) AS INTEGER) as count
+        FROM "Reaction" r
+        JOIN "User" u ON r."userId" = u.id
+        WHERE r."postId" = ${postId}
+        GROUP BY r."type";`;
 
-    return reactions.reduce(
-      (acc, curr) => {
-        acc[curr.type] = curr._count;
-        return acc;
-      },
-      {} as Record<ReactionType, number>,
-    );
+    const reactions: Reaction[] = await this.prisma.$queryRaw(query);
+    return reactions;
   }
-
-  //! HELPER FUNCTIONS
-  // serializePost(post) {
-  //   return {
-  //     id: post.id,
-  //     content: post.content,
-  //     createdAt: post.createdAt,
-  //     updatedAt: post.updatedAt,
-  //     file: {
-  //       url: post.fileUrl || null,
-  //       name: post.fileName || null,
-  //     },
-  //     images: post.postUploads.map((upload) => ({
-  //       id: upload.id,
-  //       url: upload.url,
-  //     })),
-  //     tags: post.tags,
-  //     user: post.user,
-  //     reactions: {
-  //       count: post._count.reactions,
-  //       items: post.reactions,
-  //     },
-  //     comments: post._count.comments,
-  //   };
-  // }
 }

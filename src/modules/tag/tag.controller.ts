@@ -14,9 +14,9 @@ import { CreateTagDto } from './dto/create-tag.dto';
 import { UpdateTagDto } from './dto/update-tag.dto';
 import { Public } from 'src/common/decorators/access.decorator';
 import { Roles } from 'src/common/decorators/roles.decorator';
-import { Role } from '@prisma/client';
+import { Role, User } from '@prisma/client';
+import { UserIdentity } from 'src/common/decorators/user.decorator';
 
-@Controller('tag')
 /**
  * Controller for handling tag-related operations.
  *
@@ -62,6 +62,7 @@ import { Role } from '@prisma/client';
  * @param {number} id - The ID of the tag to delete.
  * @returns {Promise<void>}
  */
+@Controller('tag')
 export class TagController {
   constructor(private readonly tagService: TagService) {}
 
@@ -87,6 +88,11 @@ export class TagController {
   @Get('majors')
   getMajorsByCollege(@Query('collegeEn') collegeEn: string) {
     return this.tagService.getMajorsByCollege(collegeEn);
+  }
+
+  @Get('user-college-tags')
+  getCollegeTags(@UserIdentity() user: User) {
+    return this.tagService.getCollegeTags(user);
   }
 
   @Public()

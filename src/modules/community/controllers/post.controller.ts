@@ -20,11 +20,13 @@ import { FileValidationPipe } from 'src/common/validators/file-validation.pipe';
 import { StorageService } from 'src/modules/storage/storage.service';
 import { ReactToPostDto } from '../dto/react-post.dto';
 import { FilterPostsDto } from '../dto/filter-posts.dto';
+import { SavePostService } from './../services/save-post.service';
 
 @Controller('post')
 export class PostController {
   constructor(
     private readonly postService: PostService,
+    private readonly savePostService: SavePostService,
     private storageService: StorageService,
   ) {}
 
@@ -56,13 +58,30 @@ export class PostController {
     );
   }
 
-
-  @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.postService.findOne(id);
+  // get all saved posts
+  @Get('saved')
+  async savedPost(
+    @UserIdentity() user: User,
+    @Query() filterPostsDto: FilterPostsDto,
+  ) {
+    const paginationOptions = this.buildPaginationOptions(filterPostsDto);
+    return this.savePostService.getSavedPosts(
+      user,
+      paginationOptions,
+      filterPostsDto,
+    );
   }
 
+  @Get(':id')
+  findOne(@Param('id', ParseIntPipe) id: number, @UserIdentity() user?: User) {
+    return this.postService.findOne(id, user);
+  }
 
+  // save / unsave post
+  @Get(':id/save')
+  async savePost(@UserIdentity() user: User, @Param('id') postId: number) {
+    return this.savePostService.savePost(user, postId);
+  }
 
   //! React to post
   @Post(':id/react')
@@ -72,6 +91,11 @@ export class PostController {
     @Body() { type }: ReactToPostDto,
   ) {
     return this.postService.reactToPost(postId, user, type);
+  }
+
+  @Get(':id/reactions')
+  postReactions(@Param('id', ParseIntPipe) postId: number) {
+    return this.postService.getPostReactions(postId);
   }
 
   //! Helper Functions

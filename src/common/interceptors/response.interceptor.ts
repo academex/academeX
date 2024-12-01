@@ -29,11 +29,33 @@ export class ResponseInterceptor<T> implements NestInterceptor<T, Response<T>> {
     );
   }
 
-  private transformResponse(data: T): Response<T> {
+  private transformResponse(data: any): Response<T> {
+    if (!data) {
+      return {
+        status: 'success',
+        message: 'Operation completed successfully',
+        data: null,
+      };
+    }
+
+    if (data.message) {
+      const { message, ...rest } = data;
+
+      const hasData = Object.values(rest).some(
+        (value) => value !== undefined && value !== null,
+      );
+
+      return {
+        status: 'success',
+        message,
+        data: hasData ? (Array.isArray(rest) ? [...rest] : rest) : null,
+      };
+    }
+
     return {
       status: 'success',
       message: 'completed successfully',
-      data: data || null,
+      data: Array.isArray(data) ? data : { ...data },
     };
   }
 
@@ -67,7 +89,7 @@ export class ResponseInterceptor<T> implements NestInterceptor<T, Response<T>> {
 
       return new HttpException(response, error.getStatus());
     }
-
+    console.log('error', error);
     // Handle unknown errors
     response = {
       status: 'error',
