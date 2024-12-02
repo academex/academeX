@@ -21,7 +21,7 @@ import { StorageService } from 'src/modules/storage/storage.service';
 import { ReactToPostDto } from '../dto/react-post.dto';
 import { FilterPostsDto } from '../dto/filter-posts.dto';
 import { SavePostService } from './../services/save-post.service';
-import { PostReactionsDto } from '../dto/Post-reactions.dto';
+import { PostReactionsDto } from '../dto/post-reactions.dto';
 
 @Controller('post')
 export class PostController {
