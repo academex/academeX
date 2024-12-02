@@ -121,7 +121,7 @@ export class PostService {
       },
     };
 
-    const totalPosts = await this.prisma.post.count({
+    const total = await this.prisma.post.count({
       where: whereCondition,
     });
 
@@ -197,12 +197,12 @@ export class PostService {
     );
 
     return {
-      posts: data,
+      data,
       meta: {
         page,
         limit,
-        PagesCount: Math.ceil(totalPosts / limit),
-        totalPosts,
+        PagesCount: Math.ceil(total / limit),
+        total,
       },
     };
   }
@@ -323,26 +323,46 @@ export class PostService {
     }
   }
 
-  async getPostReactions(postId: number) {
-    const query = Prisma.sql`
-        SELECT 
-            r."type",
-            json_agg(
-                json_build_object(
-                    'userId', u.id,
-                    'username', u.username,
-                    'firstName', u."first_name",
-                    'lastName', u."last_name",
-                    'photoUrl', u."photo_url"
-                )
-            ) as users,
-        CAST(COUNT(*) AS INTEGER) as count
-        FROM "Reaction" r
-        JOIN "User" u ON r."userId" = u.id
-        WHERE r."postId" = ${postId}
-        GROUP BY r."type";`;
+  async getPostReactions(
+    postId: number,
+    type: ReactionType,
+    paginationOptions: { skip: number; take: number },
+    { page, limit }: { page: number; limit: number },
+  ) {
+    const whereCondition = {
+      postId,
+      type,
+    };
 
-    const reactions: Reaction[] = await this.prisma.$queryRaw(query);
-    return reactions;
+    const total = await this.prisma.reaction.count({
+      where: whereCondition,
+    });
+
+    const data = await this.prisma.reaction.findMany({
+      where: whereCondition,
+      select: {
+        id: true,
+        type: true,
+        user: {
+          select: {
+            id: true,
+            username: true,
+            firstName: true,
+            lastName: true,
+            photoUrl: true,
+          },
+        },
+      },
+      ...paginationOptions,
+    });
+    return {
+      data,
+      meta: {
+        page,
+        limit,
+        PagesCount: Math.ceil(total / limit),
+        total,
+      },
+    };
   }
 }

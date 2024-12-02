@@ -80,7 +80,7 @@ export class SavePostService {
   ) {
     const whereCondition = { userId: user.id };
 
-    const totalPosts = await this.prisma.savedPost.count({
+    const total = await this.prisma.savedPost.count({
       where: whereCondition,
     });
 
@@ -144,8 +144,8 @@ export class SavePostService {
       meta: {
         page,
         limit,
-        PagesCount: Math.ceil(totalPosts / limit),
-        totalPosts,
+        PagesCount: Math.ceil(total / limit),
+        total,
       },
     };
   }

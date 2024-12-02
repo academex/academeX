@@ -21,6 +21,8 @@ import { StorageService } from 'src/modules/storage/storage.service';
 import { ReactToPostDto } from '../dto/react-post.dto';
 import { FilterPostsDto } from '../dto/filter-posts.dto';
 import { SavePostService } from './../services/save-post.service';
+import { query } from 'express';
+import { PostReactionsDto } from '../dto/Post-reactions.dto';
 
 @Controller('post')
 export class PostController {
@@ -94,8 +96,15 @@ export class PostController {
   }
 
   @Get(':id/reactions')
-  postReactions(@Param('id', ParseIntPipe) postId: number) {
-    return this.postService.getPostReactions(postId);
+  postReactions(
+    @Param('id', ParseIntPipe) postId: number,
+    @Query() { type, limit, page }: PostReactionsDto,
+  ) {
+    const paginationOptions = this.buildPaginationOptions({ page, limit });
+    return this.postService.getPostReactions(postId, type, paginationOptions, {
+      page,
+      limit,
+    });
   }
 
   //! Helper Functions
@@ -103,10 +112,7 @@ export class PostController {
     const tagId = parseInt(filters.tagId);
     return { tagId };
   }
-  buildPaginationOptions({ page, limit }: FilterPostsDto) {
-    // const page = parseInt(filters.page) || 1;
-    // const limit = parseInt(filters.limit) || 10;
-
+  buildPaginationOptions({ page, limit }: { page: number; limit: number }) {
     const skip = (page - 1) * limit;
     const take = limit;
 
