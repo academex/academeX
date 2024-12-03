@@ -355,8 +355,23 @@ export class PostService {
       },
       ...paginationOptions,
     });
+
+    const typesCount = await this.prisma.reaction.groupBy({
+      by: ['type'],
+      where: { postId },
+      _count: {
+        type: true,
+      },
+    });
+
+    const stat = typesCount.reduce((acc, el) => {
+      acc[el.type] = el._count.type;
+      return acc;
+    }, {});
+
     return {
       data,
+      stat,
       meta: {
         page,
         limit,
