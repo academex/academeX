@@ -298,6 +298,7 @@ export class PostService {
         return { message: 'Reaction removed' };
       } else {
         // If the reaction type is different, update the reaction
+        
         const updatedReaction = await this.prisma.reaction.update({
           where: {
             id: existingReaction.id,
