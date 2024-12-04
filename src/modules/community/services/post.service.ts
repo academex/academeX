@@ -241,6 +241,7 @@ export class PostService {
               },
             },
           },
+          distinct: ['type'],
         },
         ...(user && {
           SavedPost: {
@@ -338,7 +339,7 @@ export class PostService {
       where: whereCondition,
     });
 
-    const data = await this.prisma.reaction.findMany({
+    const reactions = await this.prisma.reaction.findMany({
       where: whereCondition,
       select: {
         id: true,
@@ -356,6 +357,24 @@ export class PostService {
       ...paginationOptions,
     });
 
+    const stat = await this.getReactionsStats(postId);
+
+    return {
+      data: {
+        reactions,
+        stat,
+      },
+      meta: {
+        page,
+        limit,
+        PagesCount: Math.ceil(total / limit),
+        total,
+      },
+    };
+  }
+
+  //! Helper Functions
+  async getReactionsStats(postId: number) {
     const typesCount = await this.prisma.reaction.groupBy({
       by: ['type'],
       where: { postId },
@@ -369,15 +388,6 @@ export class PostService {
       return acc;
     }, {});
 
-    return {
-      data,
-      stat,
-      meta: {
-        page,
-        limit,
-        PagesCount: Math.ceil(total / limit),
-        total,
-      },
-    };
+    return stat;
   }
 }
