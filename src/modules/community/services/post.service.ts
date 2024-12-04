@@ -158,6 +158,7 @@ export class PostService {
               },
             },
           },
+          distinct: ['type'],
         },
         SavedPost: {
           where: {
@@ -339,7 +340,7 @@ export class PostService {
       where: whereCondition,
     });
 
-    const reactions = await this.prisma.reaction.findMany({
+    const data = await this.prisma.reaction.findMany({
       where: whereCondition,
       select: {
         id: true,
@@ -360,10 +361,8 @@ export class PostService {
     const stat = await this.getReactionsStats(postId);
 
     return {
-      data: {
-        reactions,
-        stat,
-      },
+      data,
+      stat,
       meta: {
         page,
         limit,
