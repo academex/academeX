@@ -10,6 +10,7 @@ import { serializePost } from 'src/common/libs/serialize-post';
 
 @Injectable()
 export class PostService {
+  
   constructor(
     private prisma: PrismaService,
     private storageService: StorageService,
