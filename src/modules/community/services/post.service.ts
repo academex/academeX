@@ -4,13 +4,15 @@ import { Post, Prisma, Reaction, ReactionType, User } from '@prisma/client';
 import { CreatePostDto } from '../dto/create-post.dto';
 import { UpdatePostDto } from '../dto/update-post.dto';
 import { StorageService } from 'src/modules/storage/storage.service';
-import { take } from 'rxjs';
 import { FilterPostsDto } from '../dto/filter-posts.dto';
 import { serializePost } from 'src/common/libs/serialize-post';
+import {
+  PaginatedPostResponse,
+  PostResponse,
+} from 'src/common/interfaces/post-response.interface';
 
 @Injectable()
 export class PostService {
-  
   constructor(
     private prisma: PrismaService,
     private storageService: StorageService,
@@ -18,61 +20,22 @@ export class PostService {
 
   async create(
     createPostDto: CreatePostDto,
-    { tagId, id, username, photoUrl }: User,
+    user: User,
     uploads: { images?: Express.Multer.File[]; file?: Express.Multer.File[] },
-  ) {
+  ): Promise<PostResponse> {
     const { tagIds, content } = createPostDto;
 
     // Tags validation
-    // getting user tag info
-    const userTag = await this.prisma.tag.findUnique({
-      where: { id: tagId },
-      select: {
-        id: true,
-        collegeEn: true,
-        name: true,
-      },
-    });
-
-    if (!userTag) {
-      throw new BadRequestException("User's tag not found");
-    }
-
-    // check of all tags it's exists and within the same college
-    const tags = await this.prisma.tag.findMany({
-      where: { id: { in: tagIds } },
-    });
-
-    if (tags.length != tagIds.length && tagIds.length !== 0) {
-      throw new BadRequestException(
-        'Tags not valid, please provide valid tags',
-      );
-    }
-
-    const invalidTags = tags.filter(
-      (tag) => tag.collegeEn !== userTag.collegeEn,
-    );
-    if (invalidTags.length > 0) {
-      throw new BadRequestException(
-        `All tags must be from the same college as the user's tag (${userTag.name})`,
-      );
-    }
+    await this.validateTags(tagIds, user.tagId);
 
     // Upload images and file, if exists
-    const imageUrls =
-      uploads && uploads.images
-        ? await this.storageService.uploadImages(uploads.images)
-        : [];
-    const file =
-      uploads && uploads.file
-        ? await this.storageService.uploadPDF(uploads.file[0])
-        : null;
+    const { imageUrls, file } = await this.handleUploads(uploads);
 
-    const { userId, fileName, fileUrl, ...rest } =
+    const { fileName, fileUrl, postUploads, ...rest } =
       await this.prisma.post.create({
         data: {
           content,
-          ...(imageUrls && {
+          ...(imageUrls.length > 0 && {
             postUploads: {
               create: imageUrls.map((el) => ({
                 url: el.url,
@@ -87,10 +50,41 @@ export class PostService {
             fileName: file.fileName,
           }),
           user: {
-            connect: { id },
+            connect: { id: user.id },
           },
           tags: {
             connect: tagIds.map((tagId) => ({ id: tagId })),
+          },
+        },
+        select: {
+          id: true,
+          content: true,
+          fileUrl: true,
+          fileName: true,
+          createdAt: true,
+          updatedAt: true,
+          tags: {
+            select: { id: true, name: true },
+          },
+          user: {
+            select: {
+              id: true,
+              username: true,
+              photoUrl: true,
+              firstName: true,
+              lastName: true,
+            },
+          },
+          postUploads: {
+            select: {
+              url: true,
+              name: true,
+            },
+          },
+          _count: {
+            select: {
+              comments: true,
+            },
           },
         },
       });
@@ -103,8 +97,10 @@ export class PostService {
     return {
       ...rest,
       file: { name: fileName, url: fileUrl },
-      images: imageUrls.map((el) => ({ name: el.fileName, url: el.url })),
-      user: { id, username, photoUrl },
+      images: postUploads.map(({ name, url }) => ({
+        name,
+        url,
+      })),
     };
   }
 
@@ -113,7 +109,7 @@ export class PostService {
     paginationOptions: { skip: number; take: number },
     filteringOptions: { tagId: number },
     { page, limit }: FilterPostsDto,
-  ) {
+  ): Promise<PaginatedPostResponse> {
     const tagId = filteringOptions.tagId || user.tagId;
 
     const whereCondition = {
@@ -209,7 +205,7 @@ export class PostService {
     };
   }
 
-  async findOne(id: number, user: User) {
+  async findOne(id: number, user: User): Promise<PostResponse> {
     const post = await this.prisma.post.findUnique({
       where: { id },
       select: {
@@ -299,7 +295,7 @@ export class PostService {
         return { message: 'Reaction removed' };
       } else {
         // If the reaction type is different, update the reaction
-        
+
         const updatedReaction = await this.prisma.reaction.update({
           where: {
             id: existingReaction.id,
@@ -375,6 +371,60 @@ export class PostService {
   }
 
   //! Helper Functions
+  private async validateTags(tagIds: number[], userTagId: number) {
+    // Get user's tag info
+    const userTag = await this.prisma.tag.findUnique({
+      where: { id: userTagId },
+      select: {
+        id: true,
+        collegeEn: true,
+        name: true,
+      },
+    });
+
+    if (!userTag) {
+      throw new BadRequestException("User's tag not found");
+    }
+
+    if (tagIds.length === 0) {
+      throw new BadRequestException('Please provide at least one tag');
+    }
+
+    // Validate tags
+    const tags = await this.prisma.tag.findMany({
+      where: { id: { in: tagIds } },
+    });
+
+    if (tags.length !== tagIds.length) {
+      throw new BadRequestException(
+        'Tags not valid, please provide valid tags',
+      );
+    }
+
+    const invalidTags = tags.filter(
+      (tag) => tag.collegeEn !== userTag.collegeEn,
+    );
+    if (invalidTags.length > 0) {
+      throw new BadRequestException(
+        `All tags must be from the same college as the user's tag (${userTag.name})`,
+      );
+    }
+  }
+
+  private async handleUploads(uploads: {
+    images?: Express.Multer.File[];
+    file?: Express.Multer.File[];
+  }) {
+    const imageUrls =
+      uploads && uploads.images
+        ? await this.storageService.uploadImages(uploads.images)
+        : [];
+    const file =
+      uploads && uploads.file
+        ? await this.storageService.uploadPDF(uploads.file[0])
+        : null;
+    return { imageUrls, file };
+  }
   async getReactionsStats(postId: number) {
     const typesCount = await this.prisma.reaction.groupBy({
       by: ['type'],
@@ -391,4 +441,50 @@ export class PostService {
 
     return stat;
   }
+  // private readonly postSelect = {
+  
+  //   id: true,
+  //   content: true,
+  //   postUploads: true,
+  //   fileUrl: true,
+  //   fileName: true,
+  //   createdAt: true,
+  //   updatedAt: true,
+  //   tags: {
+  //     select: {
+  //       id: true,
+  //       name: true,
+  //     },
+  //   },
+  //   user: {
+  //     select: {
+  //       username: true,
+  //       id: true,
+  //       photoUrl: true,
+  //       firstName: true,
+  //       lastName: true,
+  //     },
+  //   },
+  //   reactions: {
+  //     take: 3,
+  //     select: {
+  //       id: true,
+  //       type: true,
+  //       user: {
+  //         select: {
+  //           id: true,
+  //           username: true,
+  //           photoUrl: true,
+  //         },
+  //       },
+  //     },
+  //     distinct: ['type'],
+  //   },
+  //   _count: {
+  //     select: {
+  //       reactions: true,
+  //       comments: true,
+  //     },
+  //   },
+  // } as const;
 }
