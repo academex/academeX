@@ -62,7 +62,6 @@ export class ResponseInterceptor<T> implements NestInterceptor<T, Response<T>> {
       message: 'completed successfully',
       data,
     };
-    // return data;
   }
 
   private transformError(error: any): HttpException {

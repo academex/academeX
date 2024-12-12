@@ -1,44 +1,24 @@
 import { ReactionType } from '@prisma/client';
+import { BaseEntity } from './base.interface';
+import { TagResponse } from './tag.interface';
+import { BaseUser } from './user.interface';
 
-export interface PostResponse {
-  message?: string;
-  id: number;
+export interface PostResponse extends BaseEntity {
   content: string;
-  createdAt: Date;
-  updatedAt: Date;
   file: { url: string; name: string };
   images: { url: string; name: string }[];
-  tags: { id: number; name: string }[];
-  user: PostUser;
+  tags: TagResponse[];
+  user: BaseUser;
   reactions?: {
     count: number;
     items: {
       id: number;
       type: ReactionType;
-      user: PostUser;
-    };
+      user: BaseUser;
+    }[];
   };
   comments?: number;
   isSaved?: boolean;
   isReacted?: boolean;
   reactionType?: ReactionType;
 }
-
-export interface PaginatedPostResponse {
-  message?: string;
-  data: PostResponse[];
-  meta: {
-    page: number;
-    limit: number;
-    PagesCount: number;
-    total: number;
-  };
-}
-
-type PostUser = {
-  id: number;
-  username: string;
-  photoUrl: string;
-  firstName?: string;
-  lastName?: string;
-};

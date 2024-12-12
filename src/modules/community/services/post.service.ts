@@ -1,15 +1,12 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/modules/database/prisma.service';
-import { Post, Prisma, Reaction, ReactionType, User } from '@prisma/client';
+import { ReactionType, User } from '@prisma/client';
 import { CreatePostDto } from '../dto/create-post.dto';
-import { UpdatePostDto } from '../dto/update-post.dto';
 import { StorageService } from 'src/modules/storage/storage.service';
 import { FilterPostsDto } from '../dto/filter-posts.dto';
-import { serializePost } from 'src/common/libs/serialize-post';
-import {
-  PaginatedPostResponse,
-  PostResponse,
-} from 'src/common/interfaces/post-response.interface';
+import { baseUserSelect, postSelect } from 'src/common/prisma/selects';
+import { PaginatedResponse, PostResponse } from 'src/common/interfaces';
+import { serializePaginatedPosts, serializePost } from 'src/common/serializers';
 
 @Injectable()
 export class PostService {
@@ -31,77 +28,39 @@ export class PostService {
     // Upload images and file, if exists
     const { imageUrls, file } = await this.handleUploads(uploads);
 
-    const { fileName, fileUrl, postUploads, ...rest } =
-      await this.prisma.post.create({
-        data: {
-          content,
-          ...(imageUrls.length > 0 && {
-            postUploads: {
-              create: imageUrls.map((el) => ({
-                url: el.url,
-                name: el.fileName,
-                size: el.fileSize,
-                mimeType: el.mimeType,
-              })),
-            },
-          }),
-          ...(file && {
-            fileUrl: file.url,
-            fileName: file.fileName,
-          }),
-          user: {
-            connect: { id: user.id },
-          },
-          tags: {
-            connect: tagIds.map((tagId) => ({ id: tagId })),
-          },
-        },
-        select: {
-          id: true,
-          content: true,
-          fileUrl: true,
-          fileName: true,
-          createdAt: true,
-          updatedAt: true,
-          tags: {
-            select: { id: true, name: true },
-          },
-          user: {
-            select: {
-              id: true,
-              username: true,
-              photoUrl: true,
-              firstName: true,
-              lastName: true,
-            },
-          },
+    const post = await this.prisma.post.create({
+      data: {
+        content,
+        ...(imageUrls.length > 0 && {
           postUploads: {
-            select: {
-              url: true,
-              name: true,
-            },
+            create: imageUrls.map((el) => ({
+              url: el.url,
+              name: el.fileName,
+              size: el.fileSize,
+              mimeType: el.mimeType,
+            })),
           },
-          _count: {
-            select: {
-              comments: true,
-            },
-          },
+        }),
+        ...(file && {
+          fileUrl: file.url,
+          fileName: file.fileName,
+        }),
+        user: {
+          connect: { id: user.id },
         },
-      });
+        tags: {
+          connect: tagIds.map((tagId) => ({ id: tagId })),
+        },
+      },
+      select: postSelect(user),
+    });
 
-    if (!rest)
+    if (!post)
       throw new BadRequestException(
         'something went wrong while creating the post',
       );
 
-    return {
-      ...rest,
-      file: { name: fileName, url: fileUrl },
-      images: postUploads.map(({ name, url }) => ({
-        name,
-        url,
-      })),
-    };
+    return serializePost(post);
   }
 
   async findAll(
@@ -109,7 +68,7 @@ export class PostService {
     paginationOptions: { skip: number; take: number },
     filteringOptions: { tagId: number },
     { page, limit }: FilterPostsDto,
-  ): Promise<PaginatedPostResponse> {
+  ): Promise<PaginatedResponse<PostResponse>> {
     const tagId = filteringOptions.tagId || user.tagId;
 
     const whereCondition = {
@@ -118,147 +77,39 @@ export class PostService {
       },
     };
 
-    const total = await this.prisma.post.count({
-      where: whereCondition,
-    });
-
-    const posts = await this.prisma.post.findMany({
-      where: whereCondition,
-      select: {
-        id: true,
-        content: true,
-        postUploads: true,
-        fileUrl: true,
-        fileName: true,
-        createdAt: true,
-        updatedAt: true,
-        tags: { select: { id: true, name: true } },
-        user: {
-          select: {
-            username: true,
-            id: true,
-            photoUrl: true,
-            firstName: true,
-            lastName: true,
-          },
-        },
-        reactions: {
-          take: 3,
-          select: {
-            id: true,
-            type: true,
-            user: {
-              select: {
-                id: true,
-                username: true,
-                photoUrl: true,
-              },
-            },
-          },
-          distinct: ['type'],
-        },
-        SavedPost: {
-          where: {
-            userId: user.id,
-          },
-          select: {
-            id: true,
-          },
-          take: 1,
-        },
-        _count: {
-          select: {
-            reactions: true,
-            comments: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-      ...paginationOptions,
-    });
+    // count total posts based on the filtering options
+    // get posts based on the filtering options
+    const [total, posts] = await Promise.all([
+      this.prisma.post.count({ where: whereCondition }),
+      this.prisma.post.findMany({
+        where: whereCondition,
+        select: postSelect(user),
+        orderBy: { createdAt: 'desc' },
+        ...paginationOptions,
+      }),
+    ]);
 
     const data = await Promise.all(
       posts.map(async (post) => {
-        const isReacted = await this.prisma.reaction.findFirst({
-          where: { userId: user.id, postId: post.id },
+        const isReacted = await this.prisma.reaction.findUnique({
+          where: { userId_postId: { userId: user.id, postId: post.id } },
         });
         const readyPost = {
           ...serializePost(post),
-          isSaved: post.SavedPost.length > 0,
-          isReacted: isReacted ? true : false,
+          isReacted: !!isReacted,
           reactionType: isReacted?.type || null,
         };
         return readyPost;
       }),
     );
 
-    return {
-      data,
-      meta: {
-        page,
-        limit,
-        PagesCount: Math.ceil(total / limit),
-        total,
-      },
-    };
+    return serializePaginatedPosts(data, { page, limit, total });
   }
 
   async findOne(id: number, user: User): Promise<PostResponse> {
     const post = await this.prisma.post.findUnique({
       where: { id },
-      select: {
-        id: true,
-        content: true,
-        postUploads: true,
-        fileUrl: true,
-        fileName: true,
-        createdAt: true,
-        updatedAt: true,
-        tags: { select: { id: true, name: true } },
-        user: {
-          select: {
-            username: true,
-            id: true,
-            photoUrl: true,
-            firstName: true,
-            lastName: true,
-          },
-        },
-        reactions: {
-          take: 3,
-          select: {
-            id: true,
-            type: true,
-            user: {
-              select: {
-                id: true,
-                username: true,
-                photoUrl: true,
-              },
-            },
-          },
-          distinct: ['type'],
-        },
-        ...(user && {
-          SavedPost: {
-            where: {
-              userId: user.id,
-            },
-            select: {
-              id: true,
-            },
-            take: 1,
-          },
-        }),
-        _count: {
-          select: {
-            reactions: true,
-            comments: true,
-          },
-        },
-      },
+      select: postSelect(user),
     });
     if (!post) throw new BadRequestException(`No post with this Id: ${id}`);
 
@@ -344,13 +195,7 @@ export class PostService {
         id: true,
         type: true,
         user: {
-          select: {
-            id: true,
-            username: true,
-            firstName: true,
-            lastName: true,
-            photoUrl: true,
-          },
+          select: baseUserSelect,
         },
       },
       ...paginationOptions,
@@ -441,50 +286,4 @@ export class PostService {
 
     return stat;
   }
-  // private readonly postSelect = {
-  
-  //   id: true,
-  //   content: true,
-  //   postUploads: true,
-  //   fileUrl: true,
-  //   fileName: true,
-  //   createdAt: true,
-  //   updatedAt: true,
-  //   tags: {
-  //     select: {
-  //       id: true,
-  //       name: true,
-  //     },
-  //   },
-  //   user: {
-  //     select: {
-  //       username: true,
-  //       id: true,
-  //       photoUrl: true,
-  //       firstName: true,
-  //       lastName: true,
-  //     },
-  //   },
-  //   reactions: {
-  //     take: 3,
-  //     select: {
-  //       id: true,
-  //       type: true,
-  //       user: {
-  //         select: {
-  //           id: true,
-  //           username: true,
-  //           photoUrl: true,
-  //         },
-  //       },
-  //     },
-  //     distinct: ['type'],
-  //   },
-  //   _count: {
-  //     select: {
-  //       reactions: true,
-  //       comments: true,
-  //     },
-  //   },
-  // } as const;
 }

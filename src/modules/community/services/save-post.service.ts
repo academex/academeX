@@ -1,12 +1,9 @@
-import {
-  Injectable,
-  BadRequestException,
-  ForbiddenException,
-} from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { User } from '@prisma/client';
 import { PrismaService } from 'src/modules/database/prisma.service';
 import { FilterPostsDto } from '../dto/filter-posts.dto';
-import { serializePost } from 'src/common/libs/serialize-post';
+import { serializePost } from 'src/common/serializers/post.serializer';
+import { postSelect } from 'src/common/prisma/selects';
 
 @Injectable()
 export class SavePostService {
@@ -43,16 +40,15 @@ export class SavePostService {
 
     const post = await this.prisma.post.findUnique({
       where: { id: postId },
-      // select: { userId: true, id: true },
     });
 
     if (!post) {
       throw new BadRequestException('Post not found');
     }
 
-    if (post.userId === userId) {
-      throw new ForbiddenException('Cannot save your own post');
-    }
+    // if (post.userId === userId) {
+    //   throw new ForbiddenException('Cannot save your own post');
+    // }
 
     const savedPost = await this.prisma.savedPost.create({
       data: {
@@ -89,45 +85,7 @@ export class SavePostService {
       select: {
         id: true,
         post: {
-          select: {
-            id: true,
-            content: true,
-            postUploads: true,
-            fileUrl: true,
-            fileName: true,
-            createdAt: true,
-            updatedAt: true,
-            tags: { select: { id: true, name: true } },
-            user: {
-              select: {
-                username: true,
-                id: true,
-                photoUrl: true,
-                firstName: true,
-                lastName: true,
-              },
-            },
-            reactions: {
-              take: 2,
-              select: {
-                id: true,
-                type: true,
-                user: {
-                  select: {
-                    id: true,
-                    username: true,
-                    photoUrl: true,
-                  },
-                },
-              },
-            },
-            _count: {
-              select: {
-                reactions: true,
-                comments: true,
-              },
-            },
-          },
+          select: postSelect(user),
         },
       },
       ...paginationOptions,

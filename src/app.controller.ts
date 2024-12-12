@@ -1,7 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { AppService } from './app.service';
 import { Public } from './common/decorators/access.decorator';
-import deeplink from 'node-deeplink';
 @Controller()
 export class AppController {
   constructor(private readonly appService: AppService) {}
@@ -27,16 +26,5 @@ export class AppController {
         },
       },
     ];
-    return [
-      {
-        relation: ['delegate_permission/common.handle_all_urls'],
-        target: {
-          namespace: 'android_app',
-          package_name: 'your.app.package',
-          sha256_cert_fingerprints: ['YOUR:SHA256:FINGERPRINT:HERE'],
-        },
-      },
-    ];
-    // return this.appService.getHello();
   }
 }
