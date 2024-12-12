@@ -63,11 +63,11 @@ export class StorageService {
       mimeType: string;
     }>
   > {
-    const uploadPromises = images.map((image) =>
-      this.uploadFile(image, 'images'),
+    const uploadPromises = images.map(
+      async (image) => await this.uploadFile(image, 'images'),
     );
 
-    return Promise.all(uploadPromises);
+    return await Promise.all(uploadPromises);
   }
 
   async uploadPDF(file: Express.Multer.File): Promise<{
@@ -77,7 +77,7 @@ export class StorageService {
     fileSize: number;
     mimeType: string;
   }> {
-    return this.uploadFile(file, 'pdfs');
+    return await this.uploadFile(file, 'pdfs');
   }
 
   async deleteFile(filePath: string): Promise<void> {
