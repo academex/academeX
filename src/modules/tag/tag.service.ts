@@ -44,7 +44,7 @@ export class TagService {
         collegeAr: true,
         collegeEn: true,
       },
-      distinct: ['collegeEn', 'collegeAr'],
+      distinct: ['collegeEn'],
     });
     return colleges;
   }
