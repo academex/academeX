@@ -1,7 +1,13 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { Comment, Post, User } from '@prisma/client';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { Post, User } from '@prisma/client';
 import { PrismaService } from 'src/modules/database/prisma.service';
 import { CreateCommentDto } from '../dto/create-comment';
+import { basePostSelect, baseUserSelect } from 'src/common/prisma/selects';
+import { CommentResponse, PaginatedResponse } from 'src/common/interfaces';
 
 @Injectable()
 export class CommentService {
@@ -9,12 +15,14 @@ export class CommentService {
 
   async create(
     createCommentDto: CreateCommentDto,
+    postId: number,
     user: User,
-  ): Promise<Comment> {
-    const { content, postId } = createCommentDto;
+  ): Promise<CommentResponse> {
+    const { content } = createCommentDto;
     //check if the post exists
     await this.findPostOrThrow(postId);
 
+    // creating comment and return the required data.
     const comment = await this.prisma.comment.create({
       data: {
         content,
@@ -25,24 +33,90 @@ export class CommentService {
           connect: { id: postId },
         },
       },
-    });
-    return comment;
-  }
-  async findPostComments(postId: number): Promise<Comment[]> {
-    await this.findPostOrThrow(postId);
-    const comments = await this.prisma.comment.findMany({
-      where: { postId },
-      include: {
+      select: {
+        id: true,
+        content: true,
+        createdAt: true,
+        updatedAt: true,
+        likes: true,
         user: {
-          select: { email: true, username: true, role: true, photoUrl: true },
+          select: baseUserSelect,
+        },
+        post: {
+          select: basePostSelect,
         },
       },
     });
-    return comments;
+
+    if (!comment)
+      throw new BadRequestException(
+        'something went wrong while creating the comment',
+      );
+
+    return { ...comment, isLiked: false };
   }
 
-  async findComment(id: number): Promise<Comment> {
-    const comment = await this.prisma.comment.findUnique({ where: { id } });
+  async findPostComments(
+    postId: number,
+    paginationOptions: { skip: number; take: number },
+    { page, limit }: { page: number; limit: number },
+  ): Promise<PaginatedResponse<CommentResponse>> {
+    await this.findPostOrThrow(postId);
+
+    const whereCondition = {
+      postId,
+    };
+
+    const total = await this.prisma.comment.count({
+      where: whereCondition,
+    });
+
+    const data = await this.prisma.comment.findMany({
+      where: whereCondition,
+      select: {
+        id: true,
+        content: true,
+        createdAt: true,
+        updatedAt: true,
+        likes: true,
+        user: {
+          select: baseUserSelect,
+        },
+        post: {
+          select: basePostSelect,
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      ...paginationOptions,
+    });
+    return {
+      data,
+      meta: {
+        page,
+        limit,
+        PagesCount: Math.ceil(total / limit),
+        total,
+      },
+    };
+  }
+
+  async findComment(id: number): Promise<CommentResponse> {
+    const comment = await this.prisma.comment.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        content: true,
+        createdAt: true,
+        updatedAt: true,
+        likes: true,
+        user: {
+          select: baseUserSelect,
+        },
+        post: {
+          select: basePostSelect,
+        },
+      },
+    });
     if (!comment) throw new NotFoundException(`no comment found with id ${id}`);
     return comment;
   }

@@ -22,3 +22,8 @@ export interface PostResponse extends BaseEntity {
   isReacted?: boolean;
   reactionType?: ReactionType;
 }
+
+export interface BasePost {
+  id: number;
+  content: string;
+}

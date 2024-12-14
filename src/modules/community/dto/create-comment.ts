@@ -5,7 +5,7 @@ export class CreateCommentDto {
   @IsString()
   content: string;
 
-  @IsNotEmpty()
-  @IsNumber()
-  postId: number;
+  // @IsNotEmpty()
+  // @IsNumber()
+  // postId: number;
 }
