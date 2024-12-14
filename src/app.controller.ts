@@ -14,6 +14,7 @@ export class AppController {
   @Public()
   @Get('/.well-known/assetlinks.json')
   deepLink() {
+    
     return [
       {
         relation: ['delegate_permission/common.handle_all_urls'],
