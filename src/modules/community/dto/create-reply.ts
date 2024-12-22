@@ -5,9 +5,9 @@ export class CreateReplyDto {
   @IsString()
   content: string;
 
-  @IsNotEmpty()
-  @IsNumber()
-  commentId: number;
+  // @IsNotEmpty()
+  // @IsNumber()
+  // commentId: number;
 
   @IsNotEmpty()
   @IsNumber()

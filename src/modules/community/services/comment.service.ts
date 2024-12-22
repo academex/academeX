@@ -3,11 +3,12 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Post, User } from '@prisma/client';
+import { Post, Role, User } from '@prisma/client';
 import { PrismaService } from 'src/modules/database/prisma.service';
 import { CreateCommentDto } from '../dto/create-comment';
-import { basePostSelect, baseUserSelect } from 'src/common/prisma/selects';
+import { commentSelect } from 'src/common/prisma/selects';
 import { CommentResponse, PaginatedResponse } from 'src/common/interfaces';
+import { UpdateCommentDto } from '../dto/update-comment';
 
 @Injectable()
 export class CommentService {
@@ -33,24 +34,12 @@ export class CommentService {
           connect: { id: postId },
         },
       },
-      select: {
-        id: true,
-        content: true,
-        createdAt: true,
-        updatedAt: true,
-        likes: true,
-        user: {
-          select: baseUserSelect,
-        },
-        post: {
-          select: basePostSelect,
-        },
-      },
+      select: commentSelect,
     });
 
     if (!comment)
       throw new BadRequestException(
-        'something went wrong while creating the comment',
+        'something went wrong, please try again later',
       );
 
     return { ...comment, isLiked: false };
@@ -73,19 +62,7 @@ export class CommentService {
 
     const data = await this.prisma.comment.findMany({
       where: whereCondition,
-      select: {
-        id: true,
-        content: true,
-        createdAt: true,
-        updatedAt: true,
-        likes: true,
-        user: {
-          select: baseUserSelect,
-        },
-        post: {
-          select: basePostSelect,
-        },
-      },
+      select: commentSelect,
       orderBy: { createdAt: 'desc' },
       ...paginationOptions,
     });
@@ -100,35 +77,76 @@ export class CommentService {
     };
   }
 
-  async findComment(id: number): Promise<CommentResponse> {
+  // added findPostOrThrow to make sure the post exists, and returning consistent data for the target post (instead of return a comment that doesn't belong the post in url)
+  async findComment(id: number, postId: number): Promise<CommentResponse> {
+    await this.findPostOrThrow(postId);
+
     const comment = await this.prisma.comment.findUnique({
       where: { id },
-      select: {
-        id: true,
-        content: true,
-        createdAt: true,
-        updatedAt: true,
-        likes: true,
-        user: {
-          select: baseUserSelect,
-        },
-        post: {
-          select: basePostSelect,
-        },
-      },
+      select: commentSelect,
     });
     if (!comment) throw new NotFoundException(`no comment found with id ${id}`);
     return comment;
   }
 
+  async updateComment(
+    { content }: UpdateCommentDto,
+    id: number,
+    postId: number,
+    user: User,
+  ): Promise<CommentResponse> {
+    await this.findPostOrThrow(postId);
+
+    const comment = await this.prisma.comment.findFirst({
+      where: { id, userId: user.id },
+    });
+
+    if (!comment) {
+      throw new BadRequestException(
+        "comment not founded OR you don't own this comment",
+      );
+    }
+
+    const data = await this.prisma.comment.update({
+      where: { id },
+      data: { content },
+      select: commentSelect,
+    });
+
+    return {
+      message: 'comment updated successfully',
+      ...data,
+    };
+  }
+
+  async deleteComment(id: number, postId: number, user: User) {
+    await this.findPostOrThrow(postId);
+
+    const comment = await this.prisma.comment.findFirst({
+      where: { id, userId: user.id },
+    });
+    if (!comment && user.role !== Role.ADMIN) {
+      throw new BadRequestException(
+        "comment not founded OR you don't own this comment",
+      );
+    }
+    try {
+      await this.prisma.comment.delete({ where: { id } });
+      return { message: 'comment deleted successfully' };
+    } catch (err) {
+      throw new BadRequestException(
+        'something went happened while deleting comment, please try again',
+      );
+    }
+  }
+
   //! Helper Functions
-  async findPostOrThrow(postId: number): Promise<Post> {
+  async findPostOrThrow(postId: number) {
     const post = await this.prisma.post.findUnique({
       where: { id: postId },
     });
 
-    if (!post)
-      throw new NotFoundException(`no post found with this id ${postId}`);
+    if (!post) throw new NotFoundException(`no post found with id ${postId}`);
     return post;
   }
 }

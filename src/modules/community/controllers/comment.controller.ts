@@ -1,10 +1,12 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
   Post,
+  Put,
   Query,
 } from '@nestjs/common';
 import { UserIdentity } from 'src/common/decorators/user.decorator';
@@ -13,6 +15,7 @@ import { CommentService } from '../services';
 import { CreateCommentDto } from '../dto/create-comment';
 import { FilterCommentsDto } from '../dto/filter-comments.dto';
 import { buildPaginationOptions } from 'src/common/utils';
+import { UpdateCommentDto } from '../dto/update-comment';
 
 @Controller(`post/:postId/comment`)
 export class CommentController {
@@ -24,7 +27,6 @@ export class CommentController {
     @Body() createCommentDto: CreateCommentDto,
     @UserIdentity() user: User,
   ) {
-    console.log('postId', postId);
     return this.commentService.create(createCommentDto, postId, user);
   }
 
@@ -42,7 +44,34 @@ export class CommentController {
   }
 
   @Get(':id')
-  findComment(@Param('id', ParseIntPipe) id: number) {
-    return this.commentService.findComment(id);
+  findComment(
+    @Param('postId', ParseIntPipe) postId: number,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.commentService.findComment(id, postId);
+  }
+
+  @Put(':id')
+  updateComment(
+    @Param('postId', ParseIntPipe) postId: number,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateCommentDto: UpdateCommentDto,
+    @UserIdentity() user: User,
+  ) {
+    return this.commentService.updateComment(
+      updateCommentDto,
+      id,
+      postId,
+      user,
+    );
+  }
+
+  @Delete(':id')
+  deleteComment(
+    @Param('postId', ParseIntPipe) postId: number,
+    @Param('id', ParseIntPipe) id: number,
+    @UserIdentity() user: User,
+  ) {
+    return this.commentService.deleteComment(id, postId, user);
   }
 }

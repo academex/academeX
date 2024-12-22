@@ -25,5 +25,5 @@ export interface PostResponse extends BaseEntity {
 
 export interface BasePost {
   id: number;
-  content: string;
+  // content: string;
 }

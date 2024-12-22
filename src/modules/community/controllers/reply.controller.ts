@@ -15,8 +15,12 @@ import { ReplyService } from '../services';
 export class ReplyController {
   constructor(private replyService: ReplyService) {}
   @Post()
-  create(@Body() createReplyDto: CreateReplyDto, @UserIdentity() user: User) {
-    return this.replyService.create(createReplyDto, user);
+  create(
+    @Param('commentId', ParseIntPipe) commentId: number,
+    @Body() createReplyDto: CreateReplyDto,
+    @UserIdentity() user: User,
+  ) {
+    return this.replyService.create(createReplyDto, commentId, user);
   }
 
   @Get('comment/:commentId')

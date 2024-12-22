@@ -53,7 +53,7 @@ export const postSelect = (user?: User) =>
 
 export const basePostSelect = {
   id: true,
-  content: true,
+  // content: true,
 } as const;
 
 export type PostSelectType = Prisma.PostGetPayload<{

@@ -7,8 +7,12 @@ import { CreateReplyDto } from '../dto/create-reply';
 export class ReplyService {
   constructor(private prisma: PrismaService) {}
 
-  async create(createReplyDto: CreateReplyDto, user: User): Promise<Reply> {
-    const { content, commentId, parentId } = createReplyDto;
+  async create(
+    createReplyDto: CreateReplyDto,
+    commentId: number,
+    user: User,
+  ): Promise<Reply> {
+    const { content, parentId } = createReplyDto;
     //check if the comment exists
     await this.findCommentOrThrow(commentId);
 
@@ -38,7 +42,7 @@ export class ReplyService {
     });
     return reply;
   }
-  
+
   async findCommentReplies(commentId: number): Promise<Reply[]> {
     await this.findCommentOrThrow(commentId);
     const replies = await this.prisma.reply.findMany({

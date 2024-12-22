@@ -98,7 +98,7 @@ export class ResponseInterceptor<T> implements NestInterceptor<T, Response<T>> {
     // Handle unknown errors
     response = {
       status: 'error',
-      message: 'Internal server error',
+      message: error.message || 'An error occurred',
       data: null,
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
       error: 'Internal Server Error',
