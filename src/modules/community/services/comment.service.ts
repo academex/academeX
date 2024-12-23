@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { Post, Role, User } from '@prisma/client';
 import { PrismaService } from 'src/modules/database/prisma.service';
@@ -9,10 +10,14 @@ import { CreateCommentDto } from '../dto/create-comment';
 import { commentSelect } from 'src/common/prisma/selects';
 import { CommentResponse, PaginatedResponse } from 'src/common/interfaces';
 import { UpdateCommentDto } from '../dto/update-comment';
+import { ReplyService } from './reply.service';
 
 @Injectable()
 export class CommentService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private replyService: ReplyService,
+  ) {}
 
   async create(
     createCommentDto: CreateCommentDto,
@@ -121,23 +126,33 @@ export class CommentService {
 
   async deleteComment(id: number, postId: number, user: User) {
     await this.findPostOrThrow(postId);
-
-    const comment = await this.prisma.comment.findFirst({
-      where: { id, userId: user.id },
+    const comment = await this.prisma.comment.findUnique({
+      where: { id },
     });
-    if (!comment && user.role !== Role.ADMIN) {
-      throw new BadRequestException(
+
+    if (!comment) throw new NotFoundException('comment not found');
+
+    if (comment.userId !== user.id && user.role !== Role.ADMIN) {
+      throw new UnauthorizedException(
         "comment not founded OR you don't own this comment",
       );
     }
-    try {
-      await this.prisma.comment.delete({ where: { id } });
-      return { message: 'comment deleted successfully' };
-    } catch (err) {
-      throw new BadRequestException(
-        'something went happened while deleting comment, please try again',
-      );
-    }
+
+    return await this.prisma.$transaction(async (tx) => {
+      await this.replyService.deleteCommentReplies(id);
+
+      await tx.comment.delete({
+        where: { id },
+      });
+
+      return { message: 'comment and its replies deleted successfully' };
+    });
+  }
+  catch(error) {
+    console.log('error in delete comment catch block', error);
+    throw new BadRequestException(
+      'Failed to delete comment. Please try again later.',
+    );
   }
 
   //! Helper Functions

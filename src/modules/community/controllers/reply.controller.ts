@@ -1,35 +1,53 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
   Post,
+  Put,
+  Query,
 } from '@nestjs/common';
 import { UserIdentity } from 'src/common/decorators/user.decorator';
 import { User } from '@prisma/client';
 import { CreateReplyDto } from '../dto/create-reply';
 import { ReplyService } from '../services';
+import { UpdateReplyDto } from '../dto/update-reply';
 
-@Controller('reply')
+@Controller('comment/:commentId/reply')
 export class ReplyController {
   constructor(private replyService: ReplyService) {}
   @Post()
   create(
-    @Param('commentId', ParseIntPipe) commentId: number,
     @Body() createReplyDto: CreateReplyDto,
+    @Param('commentId', ParseIntPipe) commentId: number,
     @UserIdentity() user: User,
   ) {
     return this.replyService.create(createReplyDto, commentId, user);
   }
 
-  @Get('comment/:commentId')
-  findPostComments(@Param('commentId', ParseIntPipe) commentId: number) {
+  @Get('')
+  findCommentReplies(@Param('commentId', ParseIntPipe) commentId: number) {
     return this.replyService.findCommentReplies(commentId);
   }
 
-  @Get(':id')
-  findComment(@Param('id', ParseIntPipe) id: number) {
-    return this.replyService.findReply(id);
+  @Put(':id')
+  updateReply(
+    @UserIdentity() user: User,
+    @Body() updateReplyDto: UpdateReplyDto,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('commentId', ParseIntPipe) commentId: number,
+  ) {
+    return this.replyService.updateReply(updateReplyDto, id, commentId, user);
+  }
+
+  @Delete(':id')
+  deleteReply(
+    @UserIdentity() user: User,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('commentId', ParseIntPipe) commentId: number,
+  ) {
+    return this.replyService.deleteReply(id, commentId, user);
   }
 }
