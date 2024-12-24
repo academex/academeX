@@ -6,10 +6,10 @@ import {
 } from '@nestjs/common';
 import { Post, Role, User } from '@prisma/client';
 import { PrismaService } from 'src/modules/database/prisma.service';
-import { CreateCommentDto } from '../dto/create-comment';
+import { CreateCommentDto } from '../dto/create-comment.dto';
 import { commentSelect } from 'src/common/prisma/selects';
 import { CommentResponse, PaginatedResponse } from 'src/common/interfaces';
-import { UpdateCommentDto } from '../dto/update-comment';
+import { UpdateCommentDto } from '../dto/update-comment.dto';
 import { ReplyService } from './reply.service';
 
 @Injectable()
@@ -47,7 +47,7 @@ export class CommentService {
         'something went wrong, please try again later',
       );
 
-    return { ...comment, isLiked: false };
+    return { ...comment, isLiked: false, repliesCount: 0 };
   }
 
   async findPostComments(
@@ -65,12 +65,22 @@ export class CommentService {
       where: whereCondition,
     });
 
-    const data = await this.prisma.comment.findMany({
+    const comments = await this.prisma.comment.findMany({
       where: whereCondition,
       select: commentSelect,
       orderBy: { createdAt: 'desc' },
       ...paginationOptions,
     });
+
+    const data = await Promise.all(
+      comments.map(async (comment) => {
+        const repliesCount = await this.replyService.commentRepliesCount(
+          comment.id,
+        );
+        return { ...comment, repliesCount, isLiked: false };
+      }),
+    );
+
     return {
       data,
       meta: {
@@ -87,11 +97,18 @@ export class CommentService {
     await this.findPostOrThrow(postId);
 
     const comment = await this.prisma.comment.findUnique({
-      where: { id },
+      where: { id, postId },
       select: commentSelect,
     });
-    if (!comment) throw new NotFoundException(`no comment found with id ${id}`);
-    return comment;
+    if (!comment)
+      throw new NotFoundException(
+        `Comment not found, make sure it belongs to the post`,
+      );
+
+    const repliesCount = await this.replyService.commentRepliesCount(
+      comment.id,
+    );
+    return { ...comment, repliesCount, isLiked: false };
   }
 
   async updateComment(
@@ -103,12 +120,12 @@ export class CommentService {
     await this.findPostOrThrow(postId);
 
     const comment = await this.prisma.comment.findFirst({
-      where: { id, userId: user.id },
+      where: { id, userId: user.id, postId },
     });
 
     if (!comment) {
       throw new BadRequestException(
-        "comment not founded OR you don't own this comment",
+        "comment not founded, make sure you're the owner of the comment and it belongs to the post",
       );
     }
 
@@ -118,19 +135,27 @@ export class CommentService {
       select: commentSelect,
     });
 
+    const repliesCount = await this.replyService.commentRepliesCount(
+      comment.id,
+    );
+
     return {
       message: 'comment updated successfully',
       ...data,
+      repliesCount,
     };
   }
 
   async deleteComment(id: number, postId: number, user: User) {
     await this.findPostOrThrow(postId);
     const comment = await this.prisma.comment.findUnique({
-      where: { id },
+      where: { id, postId },
     });
 
-    if (!comment) throw new NotFoundException('comment not found');
+    if (!comment)
+      throw new NotFoundException(
+        'comment not founded, make sure it belongs to the post',
+      );
 
     if (comment.userId !== user.id && user.role !== Role.ADMIN) {
       throw new UnauthorizedException(

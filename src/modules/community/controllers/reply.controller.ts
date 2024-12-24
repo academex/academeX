@@ -11,9 +11,9 @@ import {
 } from '@nestjs/common';
 import { UserIdentity } from 'src/common/decorators/user.decorator';
 import { User } from '@prisma/client';
-import { CreateReplyDto } from '../dto/create-reply';
+import { CreateReplyDto } from '../dto/create-reply.dto';
 import { ReplyService } from '../services';
-import { UpdateReplyDto } from '../dto/update-reply';
+import { UpdateReplyDto } from '../dto/update-reply.dto';
 
 @Controller('comment/:commentId/reply')
 export class ReplyController {

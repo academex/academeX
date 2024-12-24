@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { baseUserSelect } from './user.select';
 
 export const baseReplySelect = {
@@ -29,3 +30,7 @@ export const replySelect = {
     },
   },
 } as const;
+
+export type ReplySelectType = Prisma.PostGetPayload<{
+  select: typeof replySelect;
+}>;

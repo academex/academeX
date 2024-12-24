@@ -8,4 +8,5 @@ export interface CommentResponse extends BaseEntity {
   user: BaseUser;
   isLiked?: boolean;
   likes: number;
+  repliesCount: number;
 }

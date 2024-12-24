@@ -6,11 +6,10 @@ import {
 } from '@nestjs/common';
 import { Comment, Post, Reply, Role, User } from '@prisma/client';
 import { PrismaService } from 'src/modules/database/prisma.service';
-import { CreateReplyDto } from '../dto/create-reply';
-import { ReplyResponse } from 'src/common/interfaces/reply.interface';
-import { replySelect } from 'src/common/prisma/selects/reply.select';
-import { baseUserSelect } from 'src/common/prisma/selects';
-import { UpdateCommentDto } from '../dto/update-comment';
+import { CreateReplyDto } from '../dto/create-reply.dto';
+import { UpdateCommentDto } from '../dto/update-comment.dto';
+import { replySelect, ReplySelectType } from 'src/common/prisma/selects';
+import { ReplyResponse } from 'src/common/interfaces';
 
 @Injectable()
 export class ReplyService {
@@ -27,12 +26,14 @@ export class ReplyService {
 
     //in case there's parentId check if the parentId exists
     if (parentId) {
+      // parent reply & reply we ganna create must belongs to same comment
       const parent = await this.prisma.reply.findUnique({
-        where: { id: parentId },
+        where: { id: parentId, commentId },
       });
 
       if (!parent) throw new NotFoundException('Parent reply not found');
     }
+
     const reply = await this.prisma.reply.create({
       data: {
         content,
@@ -50,8 +51,7 @@ export class ReplyService {
       },
       select: replySelect,
     });
-
-    return { ...reply, repliedTo: null };
+    return this.serializeReply(reply, false);
   }
 
   async findCommentReplies(commentId: number): Promise<ReplyResponse[]> {
@@ -62,12 +62,13 @@ export class ReplyService {
       orderBy: { createdAt: 'asc' },
     });
 
-    const data = replies.map(({ parent, ...reply }) => ({
-      ...reply,
-      repliedTo: parent?.user || null,
-      isLiked: false,
-    }));
-    return data;
+    return await Promise.all(
+      replies.map(async (reply) => {
+        // get like that hold the same replyId, and userId
+        // await this.likes
+        return this.serializeReply(reply);
+      }),
+    );
   }
 
   async updateReply(
@@ -78,30 +79,37 @@ export class ReplyService {
   ): Promise<ReplyResponse> {
     await this.findCommentOrThrow(commentId);
     const reply = await this.prisma.reply.findFirst({
-      where: { id, userId: user.id },
+      where: { id, userId: user.id, commentId },
     });
 
-    if (!reply) throw new NotFoundException('Reply not found');
+    if (!reply)
+      throw new NotFoundException(
+        'Reply not found, make sure you are the owner of the reply and it belongs to the comment',
+      );
 
-    const { parent, ...updatedReply } = await this.prisma.reply.update({
+    const data = await this.prisma.reply.update({
       where: { id },
       data: { content },
       select: replySelect,
     });
+
+    // get like that hold the same replyId, and userId
     return {
       message: 'reply updated successfully',
-      ...updatedReply,
-      repliedTo: parent?.user || null,
+      ...this.serializeReply(data),
     };
   }
 
   async deleteReply(id: number, commentId: number, user: User) {
     await this.findCommentOrThrow(commentId);
     const reply = await this.prisma.reply.findUnique({
-      where: { id },
+      where: { id, commentId },
     });
 
-    if (!reply) throw new NotFoundException('Reply not found');
+    if (!reply)
+      throw new NotFoundException(
+        'Reply not found, make sure of the id and it belongs to the comment',
+      );
     if (reply.userId !== user.id && user.role !== Role.ADMIN)
       throw new UnauthorizedException(
         'You are not authorized to delete this reply',
@@ -127,6 +135,7 @@ export class ReplyService {
     }
   }
 
+  //! Dependencies Functions
   async deleteCommentReplies(commentId: number) {
     await this.findCommentOrThrow(commentId);
     try {
@@ -142,6 +151,17 @@ export class ReplyService {
     }
   }
 
+  async commentRepliesCount(commentId: number): Promise<number> {
+    await this.findCommentOrThrow(commentId);
+    try {
+      return await this.prisma.reply.count({ where: { commentId } });
+    } catch (error) {
+      throw new BadRequestException(
+        "Failed to get comment's replies count. Please try again later.",
+      );
+    }
+  }
+
   //! Helper Functions
   async findCommentOrThrow(commentId: number): Promise<Comment> {
     const comment = await this.prisma.comment.findUnique({
@@ -151,5 +171,22 @@ export class ReplyService {
     if (!comment)
       throw new NotFoundException(`no comment found with id ${commentId}`);
     return comment;
+  }
+
+  serializeReply(
+    { id, content, createdAt, updatedAt, likes, parent, comment, user },
+    isLiked?: boolean,
+  ): ReplyResponse {
+    return {
+      id,
+      content,
+      createdAt,
+      updatedAt,
+      comment,
+      user,
+      likes,
+      isLiked: isLiked || false,
+      repliedTo: parent || null,
+    };
   }
 }
