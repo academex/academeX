@@ -13,7 +13,6 @@ export const commentSelect = {
   content: true,
   createdAt: true,
   updatedAt: true,
-  likes: true,
   user: {
     select: baseUserSelect,
   },

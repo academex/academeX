@@ -47,13 +47,14 @@ export class CommentService {
         'something went wrong, please try again later',
       );
 
-    return { ...comment, isLiked: false, repliesCount: 0 };
+    return { ...comment, likes: 0, isLiked: false, repliesCount: 0 };
   }
 
   async findPostComments(
     postId: number,
     paginationOptions: { skip: number; take: number },
     { page, limit }: { page: number; limit: number },
+    user: User,
   ): Promise<PaginatedResponse<CommentResponse>> {
     await this.findPostOrThrow(postId);
 
@@ -77,7 +78,21 @@ export class CommentService {
         const repliesCount = await this.replyService.commentRepliesCount(
           comment.id,
         );
-        return { ...comment, repliesCount, isLiked: false };
+
+        const likes = await this.prisma.commentLikes.count({
+          where: { commentId: comment.id },
+        });
+
+        const isLiked = await this.prisma.commentLikes.findUnique({
+          where: {
+            userId_commentId: {
+              userId: user.id,
+              commentId: comment.id,
+            },
+          },
+        });
+
+        return { ...comment, likes, repliesCount, isLiked: !!isLiked };
       }),
     );
 
@@ -93,7 +108,11 @@ export class CommentService {
   }
 
   // added findPostOrThrow to make sure the post exists, and returning consistent data for the target post (instead of return a comment that doesn't belong the post in url)
-  async findComment(id: number, postId: number): Promise<CommentResponse> {
+  async findComment(
+    id: number,
+    postId: number,
+    user: User,
+  ): Promise<CommentResponse> {
     await this.findPostOrThrow(postId);
 
     const comment = await this.prisma.comment.findUnique({
@@ -108,7 +127,20 @@ export class CommentService {
     const repliesCount = await this.replyService.commentRepliesCount(
       comment.id,
     );
-    return { ...comment, repliesCount, isLiked: false };
+
+    const likes = await this.prisma.commentLikes.count({
+      where: { commentId: comment.id },
+    });
+
+    const isLiked = await this.prisma.commentLikes.findUnique({
+      where: {
+        userId_commentId: {
+          userId: user.id,
+          commentId: comment.id,
+        },
+      },
+    });
+    return { ...comment, repliesCount, likes, isLiked: !!isLiked };
   }
 
   async updateComment(
@@ -139,9 +171,23 @@ export class CommentService {
       comment.id,
     );
 
+    const likes = await this.prisma.commentLikes.count({
+      where: { commentId: comment.id },
+    });
+
+    const isLiked = await this.prisma.commentLikes.findUnique({
+      where: {
+        userId_commentId: {
+          userId: user.id,
+          commentId: comment.id,
+        },
+      },
+    });
     return {
       message: 'comment updated successfully',
       ...data,
+      likes,
+      isLiked: !!isLiked,
       repliesCount,
     };
   }
@@ -178,6 +224,48 @@ export class CommentService {
     throw new BadRequestException(
       'Failed to delete comment. Please try again later.',
     );
+  }
+
+  async likeComment(commentId: number, postId: number, user: User) {
+    await this.findPostOrThrow(postId);
+
+    const comment = await this.prisma.comment.findUnique({
+      where: { id: commentId, postId },
+    });
+
+    if (!comment)
+      throw new NotFoundException(
+        'comment not founded, make sure it belongs to the post',
+      );
+
+    const existingLike = await this.prisma.commentLikes.findUnique({
+      where: {
+        userId_commentId: {
+          userId: user.id,
+          commentId,
+        },
+      },
+    });
+
+    if (existingLike) {
+      await this.prisma.commentLikes.delete({
+        where: {
+          userId_commentId: {
+            userId: user.id,
+            commentId,
+          },
+        },
+      });
+      return { message: 'Comment unliked successfully' };
+    } else {
+      await this.prisma.commentLikes.create({
+        data: {
+          commentId,
+          userId: user.id,
+        },
+      });
+      return { message: 'Comment liked successfully' };
+    }
   }
 
   //! Helper Functions

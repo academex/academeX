@@ -28,8 +28,11 @@ export class ReplyController {
   }
 
   @Get('')
-  findCommentReplies(@Param('commentId', ParseIntPipe) commentId: number) {
-    return this.replyService.findCommentReplies(commentId);
+  findCommentReplies(
+    @UserIdentity() user: User,
+    @Param('commentId', ParseIntPipe) commentId: number,
+  ) {
+    return this.replyService.findCommentReplies(commentId, user);
   }
 
   @Put(':id')
@@ -49,5 +52,13 @@ export class ReplyController {
     @Param('commentId', ParseIntPipe) commentId: number,
   ) {
     return this.replyService.deleteReply(id, commentId, user);
+  }
+  @Get(':id/like')
+  likeReply(
+    @Param('commentId', ParseIntPipe) commentId: number,
+    @Param('id', ParseIntPipe) id: number,
+    @UserIdentity() user: User,
+  ) {
+    return this.replyService.likeReply(id, commentId, user);
   }
 }

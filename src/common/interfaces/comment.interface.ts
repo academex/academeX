@@ -6,7 +6,7 @@ export interface CommentResponse extends BaseEntity {
   content: string;
   post: BasePost;
   user: BaseUser;
-  isLiked?: boolean;
+  isLiked: boolean;
   likes: number;
   repliesCount: number;
 }

@@ -32,23 +32,30 @@ export class CommentController {
 
   @Get('')
   findPostComments(
+    @UserIdentity() user: User,
     @Param('postId', ParseIntPipe) postId: number,
     @Query() { page, limit }: FilterCommentsDto,
   ) {
     const paginationOptions = buildPaginationOptions({ page, limit });
 
-    return this.commentService.findPostComments(postId, paginationOptions, {
-      page,
-      limit,
-    });
+    return this.commentService.findPostComments(
+      postId,
+      paginationOptions,
+      {
+        page,
+        limit,
+      },
+      user,
+    );
   }
 
   @Get(':id')
   findComment(
+    @UserIdentity() user: User,
     @Param('postId', ParseIntPipe) postId: number,
     @Param('id', ParseIntPipe) id: number,
   ) {
-    return this.commentService.findComment(id, postId);
+    return this.commentService.findComment(id, postId, user);
   }
 
   @Put(':id')
@@ -73,5 +80,14 @@ export class CommentController {
     @UserIdentity() user: User,
   ) {
     return this.commentService.deleteComment(id, postId, user);
+  }
+
+  @Get(':id/like')
+  likeComment(
+    @Param('postId', ParseIntPipe) postId: number,
+    @Param('id', ParseIntPipe) id: number,
+    @UserIdentity() user: User,
+  ) {
+    return this.commentService.likeComment(id, postId, user);
   }
 }

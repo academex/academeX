@@ -51,10 +51,14 @@ export class ReplyService {
       },
       select: replySelect,
     });
-    return this.serializeReply(reply, false);
+
+    return this.serializeReply(reply, 0, false);
   }
 
-  async findCommentReplies(commentId: number): Promise<ReplyResponse[]> {
+  async findCommentReplies(
+    commentId: number,
+    user: User,
+  ): Promise<ReplyResponse[]> {
     await this.findCommentOrThrow(commentId);
     const replies = await this.prisma.reply.findMany({
       where: { commentId },
@@ -64,9 +68,19 @@ export class ReplyService {
 
     return await Promise.all(
       replies.map(async (reply) => {
-        // get like that hold the same replyId, and userId
-        // await this.likes
-        return this.serializeReply(reply);
+        const likes = await this.prisma.replyLikes.count({
+          where: { replyId: reply.id },
+        });
+
+        const isLiked = await this.prisma.replyLikes.findUnique({
+          where: {
+            userId_replyId: {
+              userId: user.id,
+              replyId: reply.id,
+            },
+          },
+        });
+        return this.serializeReply(reply, likes, !!isLiked);
       }),
     );
   }
@@ -93,10 +107,21 @@ export class ReplyService {
       select: replySelect,
     });
 
-    // get like that hold the same replyId, and userId
+    const likes = await this.prisma.replyLikes.count({
+      where: { replyId: reply.id },
+    });
+
+    const isLiked = await this.prisma.replyLikes.findUnique({
+      where: {
+        userId_replyId: {
+          userId: user.id,
+          replyId: reply.id,
+        },
+      },
+    });
     return {
       message: 'reply updated successfully',
-      ...this.serializeReply(data),
+      ...this.serializeReply(data, likes, !!isLiked),
     };
   }
 
@@ -132,6 +157,48 @@ export class ReplyService {
       throw new BadRequestException(
         'Failed to delete reply. Please try again later.',
       );
+    }
+  }
+
+  async likeReply(replyId: number, commentId: number, user: User) {
+    await this.findCommentOrThrow(commentId);
+
+    const reply = await this.prisma.reply.findUnique({
+      where: { id: replyId, commentId },
+    });
+
+    if (!reply)
+      throw new NotFoundException(
+        'Reply not found, make sure it belongs to the comment',
+      );
+
+    const existingLike = await this.prisma.replyLikes.findUnique({
+      where: {
+        userId_replyId: {
+          userId: user.id,
+          replyId,
+        },
+      },
+    });
+
+    if (existingLike) {
+      await this.prisma.replyLikes.delete({
+        where: {
+          userId_replyId: {
+            userId: user.id,
+            replyId,
+          },
+        },
+      });
+      return { message: 'Reply unliked successfully' };
+    } else {
+      await this.prisma.replyLikes.create({
+        data: {
+          replyId,
+          userId: user.id,
+        },
+      });
+      return { message: 'Reply liked successfully' };
     }
   }
 
@@ -174,7 +241,8 @@ export class ReplyService {
   }
 
   serializeReply(
-    { id, content, createdAt, updatedAt, likes, parent, comment, user },
+    { id, content, createdAt, updatedAt, parent, comment, user },
+    likes: number,
     isLiked?: boolean,
   ): ReplyResponse {
     return {
