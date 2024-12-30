@@ -55,6 +55,9 @@
 // - hide post.
 // - unblock user.
 // - forword user to the post creator profile, when click on the creator image.
+// - convert tags into arabic
+// - make the psot hashtags by auto-complete, and make him able to create post on other colleges
+
 
 //! akaram meeting:
 // - storage using nestjs (popbably use Wasabi)

@@ -11,6 +11,7 @@ import { commentSelect } from 'src/common/prisma/selects';
 import { CommentResponse, PaginatedResponse } from 'src/common/interfaces';
 import { UpdateCommentDto } from '../dto/update-comment.dto';
 import { ReplyService } from './reply.service';
+import { CreateCommentsDto } from '../dto/create-comments.dto';
 
 @Injectable()
 export class CommentService {
@@ -48,6 +49,32 @@ export class CommentService {
       );
 
     return { ...comment, likes: 0, isLiked: false, repliesCount: 0 };
+  }
+  async createComments(
+    createCommentsDto: CreateCommentsDto,
+    postId: number,
+    user: User,
+  ): Promise<CommentResponse[]> {
+    //
+    //check if the post exists
+    await this.findPostOrThrow(postId);
+    const comments = await this.prisma.comment.createManyAndReturn({
+      data: createCommentsDto.contents.map((content) => ({
+        content,
+        userId: user.id,
+        postId: postId,
+      })),
+      select: commentSelect,
+    });
+
+    if (!(comments.length > 1))
+      throw new BadRequestException(
+        'something went wrong, please try again later',
+      );
+
+    return comments.map((comment) => {
+      return { ...comment, likes: 0, isLiked: false, repliesCount: 0 };
+    });
   }
 
   async findPostComments(
