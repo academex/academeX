@@ -29,13 +29,16 @@ model User {
   isActive                  Boolean   @default(true)
 
   // Relations
-  tag       Tag        @relation(fields: [tagId], references: [id])
-  tagId     Int        @map("tag_id")
-  posts     Post[]
-  comments  Comment[]
-  replies   Reply[]
-  reactions Reaction[]
+  tag          Tag            @relation(fields: [tagId], references: [id])
+  tagId        Int            @map("tag_id")
+  posts        Post[]
+  comments     Comment[]
+  replies      Reply[]
+  reactions    Reaction[]
+  savedPost    SavedPost[]
   // @@unique([email, username]) // Compound unique constraint
+  commentLikes CommentLikes[]
+  replyLikes   ReplyLikes[]
 
   @@index([email])
   @@index([username])
@@ -50,6 +53,7 @@ model Tag {
   collegeEn   String   @map("college_en")
   majorEn     String   @map("major_en")
   description String?
+  photoUrl    String?  @map("photo_url")
   yearsNum    Int      @map("years_num")
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now()) @map("created_at")
@@ -58,19 +62,22 @@ model Tag {
   // Relations
   users User[]
   posts Post[]
-
   // @@index([slug])
+
+  @@index([collegeEn])
+  @@index([collegeAr])
 }
 
 model Post {
   id          Int      @id @default(autoincrement())
   content     String   @db.Text
-  // likes       Int?     @default(0)
+  shares       Int?     @default(0)
   isPublished Boolean  @default(true) @map("is_published")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
   fileUrl     String?  @map("file_url")
   fileName    String?  @map("file_name")
+  photoUrl                  String?   @map("photo_url")
 
   // Relations
   tags        Tag[]
@@ -81,14 +88,32 @@ model Post {
   postUploads PostUploads[]
   comments    Comment[]
   reactions   Reaction[]
+  savedPost   SavedPost[]
 
   @@index([userId])
+}
+
+model SavedPost {
+  id Int @id @default(autoincrement())
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  // Relations
+  user   User @relation(fields: [userId], references: [id])
+  userId Int  @map("user_id")
+  post   Post @relation(fields: [postId], references: [id])
+  postId Int  @map("post_id")
+
+  @@unique([userId, postId])
+  @@index([userId])
+  @@map("saved_posts")
 }
 
 model Comment {
   id        Int      @id @default(autoincrement())
   content   String
-  likes     Int?     @default(0)
+  // likes     Int?     @default(0)
   isHidden  Boolean  @default(false) @map("is_hidden")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
@@ -99,25 +124,28 @@ model Comment {
   post    Post    @relation(fields: [postId], references: [id])
   postId  Int     @map("post_id")
   replies Reply[]
+
+  commentLikes CommentLikes[]
 }
 
 model Reply {
   id        Int      @id @default(autoincrement())
   content   String
-  likes     Int?     @default(0)
+  // likes     Int?     @default(0)
   isHidden  Boolean  @default(false) @map("is_hidden")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   // Relations
-  user      User    @relation(fields: [userId], references: [id])
-  userId    Int     @map("user_id")
-  comment   Comment @relation(fields: [commentId], references: [id])
-  commentId Int     @map("comment_id")
+  user       User         @relation(fields: [userId], references: [id])
+  userId     Int          @map("user_id")
+  comment    Comment      @relation(fields: [commentId], references: [id])
+  commentId  Int          @map("comment_id")
   // ref to the parent reply, 
-  parent    Reply?  @relation("ReplyToParent", fields: [parentId], references: [id])
-  parentId  Int?    @map("parent_id")
-  children  Reply[] @relation("ReplyToParent")
+  parent     Reply?       @relation("ReplyToParent", fields: [parentId], references: [id])
+  parentId   Int?         @map("parent_id")
+  children   Reply[]      @relation("ReplyToParent")
+  replyLikes ReplyLikes[]
 }
 
 model Reaction {
@@ -134,6 +162,40 @@ model Reaction {
 
   @@unique([userId, postId])
   @@index([postId])
+}
+
+model CommentLikes {
+  id Int @id @default(autoincrement())
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  user   User @relation(fields: [userId], references: [id])
+  userId Int  @map("user_id")
+
+  comment   Comment @relation(fields: [commentId], references: [id])
+  commentId Int     @map("comment_id")
+
+  @@unique([userId, commentId])
+  @@index([commentId])
+  @@map("comment_likes")
+}
+
+model ReplyLikes {
+  id Int @id @default(autoincrement())
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  user   User @relation(fields: [userId], references: [id])
+  userId Int  @map("user_id")
+
+  reply   Reply @relation(fields: [replyId], references: [id])
+  replyId Int   @map("reply_id")
+
+  @@unique([userId, replyId])
+  @@index([replyId])
+  @@map("reply_likes")
 }
 
 model Library {

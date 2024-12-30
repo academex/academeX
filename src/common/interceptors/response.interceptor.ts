@@ -22,18 +22,45 @@ export class ResponseInterceptor<T> implements NestInterceptor<T, Response<T>> {
     next: CallHandler,
   ): Observable<Response<T>> {
     return next.handle().pipe(
-      map((data) => this.transformResponse(data)),
+      map((data) => {
+        if (context.getHandler().name === 'deepLink') {
+          return data;
+        }
+        return this.transformResponse(data);
+      }),
       catchError((error) => {
         return throwError(() => this.transformError(error));
       }),
     );
   }
 
-  private transformResponse(data: T): Response<T> {
+  private transformResponse(data: any): Response<T> {
+    if (!data) {
+      return {
+        status: 'success',
+        message: 'Operation completed successfully',
+        data: null,
+      };
+    }
+
+    if (data.message) {
+      const { message, ...rest } = data;
+
+      const hasData = Object.values(rest).some(
+        (value) => value !== undefined && value !== null,
+      );
+
+      return {
+        status: 'success',
+        message,
+        data: hasData ? (Array.isArray(rest) ? [...rest] : rest) : null,
+      };
+    }
+
     return {
       status: 'success',
       message: 'completed successfully',
-      data: data || null,
+      data,
     };
   }
 
@@ -67,11 +94,11 @@ export class ResponseInterceptor<T> implements NestInterceptor<T, Response<T>> {
 
       return new HttpException(response, error.getStatus());
     }
-
+    console.log('error', error);
     // Handle unknown errors
     response = {
       status: 'error',
-      message: 'Internal server error',
+      message: error.message || 'An error occurred',
       data: null,
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
       error: 'Internal Server Error',

@@ -9,6 +9,7 @@ import {
   UseInterceptors,
   UploadedFiles,
   Query,
+  Delete,
 } from '@nestjs/common';
 import { ReactionType, User } from '@prisma/client';
 import { UserIdentity } from 'src/common/decorators/user.decorator';
@@ -19,11 +20,14 @@ import { FileValidationPipe } from 'src/common/validators/file-validation.pipe';
 import { StorageService } from 'src/modules/storage/storage.service';
 import { ReactToPostDto } from '../dto/react-post.dto';
 import { FilterPostsDto } from '../dto/filter-posts.dto';
+import { SavePostService } from './../services/save-post.service';
+import { PostReactionsDto } from '../dto/post-reactions.dto';
 
 @Controller('post')
 export class PostController {
   constructor(
     private readonly postService: PostService,
+    private readonly savePostService: SavePostService,
     private storageService: StorageService,
   ) {}
 
@@ -47,14 +51,40 @@ export class PostController {
   findAll(@UserIdentity() user: User, @Query() filterPostsDto: FilterPostsDto) {
     const paginationOptions = this.buildPaginationOptions(filterPostsDto);
     const filteringOptions = this.buildFilteringOptions(filterPostsDto);
-    return this.postService.findAll(user, paginationOptions, filteringOptions);
+    return this.postService.findAll(
+      user,
+      paginationOptions,
+      filteringOptions,
+      filterPostsDto,
+    );
+  }
+
+  // get all saved posts
+  @Get('saved')
+  async savedPost(
+    @UserIdentity() user: User,
+    @Query() filterPostsDto: FilterPostsDto,
+  ) {
+    const paginationOptions = this.buildPaginationOptions(filterPostsDto);
+    return this.savePostService.getSavedPosts(
+      user,
+      paginationOptions,
+      filterPostsDto,
+    );
   }
 
   @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.postService.findOne(id);
+  findOne(@Param('id', ParseIntPipe) id: number, @UserIdentity() user?: User) {
+    return this.postService.findOne(id, user);
   }
 
+  // save / unsave post
+  @Get(':id/save')
+  async savePost(@UserIdentity() user: User, @Param('id') postId: number) {
+    return this.savePostService.savePost(user, postId);
+  }
+
+  //! React to post
   @Post(':id/react')
   reactToPost(
     @Param('id', ParseIntPipe) postId: number,
@@ -64,14 +94,24 @@ export class PostController {
     return this.postService.reactToPost(postId, user, type);
   }
 
+  @Get(':id/reactions')
+  postReactions(
+    @Param('id', ParseIntPipe) postId: number,
+    @Query() { type, limit, page }: PostReactionsDto,
+  ) {
+    const paginationOptions = this.buildPaginationOptions({ page, limit });
+    return this.postService.getPostReactions(postId, type, paginationOptions, {
+      page,
+      limit,
+    });
+  }
+
+  //! Helper Functions
   buildFilteringOptions(filters: FilterPostsDto) {
     const tagId = parseInt(filters.tagId);
     return { tagId };
   }
-  buildPaginationOptions(filters: FilterPostsDto) {
-    const page = parseInt(filters.page) || 1;
-    const limit = parseInt(filters.limit) || 10;
-
+  buildPaginationOptions({ page, limit }: { page: number; limit: number }) {
     const skip = (page - 1) * limit;
     const take = limit;
 

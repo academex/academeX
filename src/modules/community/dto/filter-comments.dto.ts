@@ -1,10 +1,7 @@
 import { Type } from 'class-transformer';
-import { IsInt, IsNumber, IsOptional, Min } from 'class-validator';
+import { IsInt, IsOptional, Min } from 'class-validator';
 
-export class FilterPostsDto {
-  @IsOptional()
-  tagId: string;
-
+export class FilterCommentsDto {
   @IsOptional()
   @Type(() => Number)
   @IsInt()
