@@ -106,6 +106,40 @@ export class PostService {
     return serializePaginatedPosts(data, { page, limit, total });
   }
 
+  async findPopular(
+    user: User,
+    paginationOptions: { skip: number; take: number },
+    filteringOptions: { tagId: number },
+    { page, limit }: FilterPostsDto,
+  ): Promise<PaginatedResponse<PostResponse>> {
+    const [total, posts] = await Promise.all([
+      this.prisma.post.count(),
+      this.prisma.post.findMany({
+        select: postSelect(),
+        orderBy: { createdAt: 'desc' },
+        ...paginationOptions,
+      }),
+    ]);
+
+    const data = await Promise.all(
+      posts.map(async (post) => {
+        const isReacted = user
+          ? await this.prisma.reaction.findUnique({
+              where: { userId_postId: { userId: user.id, postId: post.id } },
+            })
+          : false;
+        const readyPost = {
+          ...serializePost(post),
+          isReacted: !!isReacted,
+          reactionType: (isReacted && isReacted?.type) || null,
+        };
+        return readyPost;
+      }),
+    );
+
+    return serializePaginatedPosts(data, { page, limit, total });
+  }
+
   async findOne(id: number, user: User): Promise<PostResponse> {
     const post = await this.prisma.post.findUnique({
       where: { id },

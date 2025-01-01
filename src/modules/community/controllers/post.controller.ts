@@ -22,6 +22,8 @@ import { ReactToPostDto } from '../dto/react-post.dto';
 import { FilterPostsDto } from '../dto/filter-posts.dto';
 import { SavePostService } from './../services/save-post.service';
 import { PostReactionsDto } from '../dto/post-reactions.dto';
+import { Public } from 'src/common/decorators/access.decorator';
+import { OptionalAuth } from 'src/common/decorators/optional-auth.decorator';
 
 @Controller('post')
 export class PostController {
@@ -52,6 +54,22 @@ export class PostController {
     const paginationOptions = this.buildPaginationOptions(filterPostsDto);
     const filteringOptions = this.buildFilteringOptions(filterPostsDto);
     return this.postService.findAll(
+      user,
+      paginationOptions,
+      filteringOptions,
+      filterPostsDto,
+    );
+  }
+
+  @OptionalAuth()
+  @Get('popular')
+  findPopular(
+    @UserIdentity() user: User | undefined,
+    @Query() filterPostsDto: FilterPostsDto,
+  ) {
+    const paginationOptions = this.buildPaginationOptions(filterPostsDto);
+    const filteringOptions = this.buildFilteringOptions(filterPostsDto);
+    return this.postService.findPopular(
       user,
       paginationOptions,
       filteringOptions,

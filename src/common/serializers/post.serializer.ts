@@ -18,7 +18,7 @@ export const serializePost = (post: PostSelectType): PostResponse => {
       name: upload.name,
     })),
     comments: post._count.comments,
-    isSaved: post.savedPost.length > 0,
+    isSaved: post.savedPost ? post.savedPost.length > 0 : false,
     reactions: {
       count: post._count.reactions,
       items: post.reactions,

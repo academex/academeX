@@ -1,6 +1,5 @@
 // !DB:
 
-
 //? COMMITE message:
 
 //? TESTING:
@@ -13,6 +12,7 @@
 // try to find a & delete an existing reply that it's parent not exists
 
 //? Today's Plan:
+// savedPost in popular route, in gest user case
 // add type to serialize reply input
 // testing
 
@@ -58,7 +58,6 @@
 // - convert tags into arabic
 // - make the psot hashtags by auto-complete, and make him able to create post on other colleges
 
-
 //! akaram meeting:
 // - storage using nestjs (popbably use Wasabi)
 // - how to get high availability and multi teair architecture in monolothic app
@@ -74,4 +73,3 @@
 //? WHY I TRANSFARED FROM INTERCEPTORS INTO TYPES IN RESPONSE STANDARDIZATIONS?
 // 1- when I want to return a custom res (without standard, no status or data), we should edit the interceptor and add a if statement to check of the req name
 // 2- generic types more flixable and easy to maintaine, I have full options of what should I return in each route.
-
