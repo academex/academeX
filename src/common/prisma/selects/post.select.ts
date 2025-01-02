@@ -37,7 +37,7 @@ export const postSelect = (user?: User) =>
       distinct: ['type' as const] satisfies Prisma.ReactionScalarFieldEnum[],
     },
     ...(user && {
-      savedPost: {
+      savedPosts: {
         where: { userId: user.id },
         select: { id: true },
         take: 1,

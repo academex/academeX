@@ -3,9 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-  // directUrl = env("DATABASE_URL_UNPOOLED")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
 }
 
 // MODELS
@@ -26,22 +26,24 @@ model User {
   phoneNum                  String    @map("phone_num")
   createdAt                 DateTime  @default(now()) @map("created_at")
   updatedAt                 DateTime  @default(now()) @updatedAt @map("updated_at")
-  isActive                  Boolean   @default(true)
+  isActive                  Boolean   @default(true) @map("is_active")
 
   // Relations
-  tag          Tag            @relation(fields: [tagId], references: [id])
-  tagId        Int            @map("tag_id")
+  tag          Tag           @relation(fields: [tagId], references: [id])
+  tagId        Int           @map("tag_id")
   posts        Post[]
   comments     Comment[]
   replies      Reply[]
   reactions    Reaction[]
-  savedPost    SavedPost[]
-  // @@unique([email, username]) // Compound unique constraint
-  commentLikes CommentLikes[]
-  replyLikes   ReplyLikes[]
+  savedPosts   SavedPost[]
+  commentLikes CommentLike[]
+  replyLikes   ReplyLike[]
+  polls        Poll[]
+  pollVotes    PollVote[]
 
   @@index([email])
   @@index([username])
+  @@map("user")
 }
 
 model Tag {
@@ -66,6 +68,7 @@ model Tag {
 
   @@index([collegeEn])
   @@index([collegeAr])
+  @@map("tag")
 }
 
 model Post {
@@ -81,16 +84,60 @@ model Post {
 
   // Relations
   tags        Tag[]
-  user        User          @relation(fields: [userId], references: [id])
-  userId      Int           @map("user_id")
-  // file        Library?      @relation(fields: [fileId], references: [id])
-  // fileId      Int?          @map("file_id")
-  postUploads PostUploads[]
+  user        User         @relation(fields: [userId], references: [id])
+  userId      Int          @map("user_id")
+  postUploads PostUpload[]
   comments    Comment[]
   reactions   Reaction[]
-  savedPost   SavedPost[]
+  savedPosts  SavedPost[]
+  polls       Poll[]
 
   @@index([userId])
+  @@map("post")
+}
+
+model Poll {
+  id        Int      @id @default(autoincrement())
+  question  String
+  endDate   DateTime @map("end_date")
+  // isMultiple Boolean  @default(false) @map("is_multiple")
+  isHidden  Boolean  @default(false) @map("is_hidden")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  user        User         @relation(fields: [userId], references: [id])
+  userId      Int          @map("user_id")
+  post        Post         @relation(fields: [postId], references: [id])
+  postId      Int          @map("post_id")
+  pollOptions PollOption[]
+
+  @@map("poll")
+}
+
+// I didn't add the postId in the model as the reply-comment relation, because the pollOptions is not a dependant entity. 
+model PollOption {
+  id        Int        @id @default(autoincrement())
+  content   String
+  order     Int        @default(0)
+  poll      Poll       @relation(fields: [pollId], references: [id])
+  pollId    Int        @map("poll_id")
+  pollVotes PollVote[]
+
+  @@map("poll_option")
+}
+
+model PollVote {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @map("created_at")
+
+  pollOption   PollOption @relation(fields: [pollOptionId], references: [id])
+  pollOptionId Int        @map("poll_option_id")
+  user         User       @relation(fields: [userId], references: [id])
+  userId       Int        @map("user_id")
+
+  @@unique([userId, pollOptionId])
+  @@index([pollOptionId])
+  @@map("poll_vote")
 }
 
 model SavedPost {
@@ -107,7 +154,7 @@ model SavedPost {
 
   @@unique([userId, postId])
   @@index([userId])
-  @@map("saved_posts")
+  @@map("saved_post")
 }
 
 model Comment {
@@ -125,7 +172,9 @@ model Comment {
   postId  Int     @map("post_id")
   replies Reply[]
 
-  commentLikes CommentLikes[]
+  commentLikes CommentLike[]
+
+  @@map("comment")
 }
 
 model Reply {
@@ -137,15 +186,17 @@ model Reply {
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   // Relations
-  user       User         @relation(fields: [userId], references: [id])
-  userId     Int          @map("user_id")
-  comment    Comment      @relation(fields: [commentId], references: [id])
-  commentId  Int          @map("comment_id")
+  user       User        @relation(fields: [userId], references: [id])
+  userId     Int         @map("user_id")
+  comment    Comment     @relation(fields: [commentId], references: [id])
+  commentId  Int         @map("comment_id")
   // ref to the parent reply, 
-  parent     Reply?       @relation("ReplyToParent", fields: [parentId], references: [id])
-  parentId   Int?         @map("parent_id")
-  children   Reply[]      @relation("ReplyToParent")
-  replyLikes ReplyLikes[]
+  parent     Reply?      @relation("ReplyToParent", fields: [parentId], references: [id])
+  parentId   Int?        @map("parent_id")
+  children   Reply[]     @relation("ReplyToParent")
+  replyLikes ReplyLike[]
+
+  @@map("reply")
 }
 
 model Reaction {
@@ -162,9 +213,10 @@ model Reaction {
 
   @@unique([userId, postId])
   @@index([postId])
+  @@map("reaction")
 }
 
-model CommentLikes {
+model CommentLike {
   id Int @id @default(autoincrement())
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -178,10 +230,10 @@ model CommentLikes {
 
   @@unique([userId, commentId])
   @@index([commentId])
-  @@map("comment_likes")
+  @@map("comment_like")
 }
 
-model ReplyLikes {
+model ReplyLike {
   id Int @id @default(autoincrement())
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -195,7 +247,7 @@ model ReplyLikes {
 
   @@unique([userId, replyId])
   @@index([replyId])
-  @@map("reply_likes")
+  @@map("reply_like")
 }
 
 model Library {
@@ -210,11 +262,10 @@ model Library {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
 
-  // Relations
-  // post Post[]
+  @@map("library")
 }
 
-model PostUploads {
+model PostUpload {
   id        Int      @id @default(autoincrement())
   url       String   @map("image_url")
   name      String   @map("file_name")
@@ -228,7 +279,7 @@ model PostUploads {
   postId Int  @map("post_id")
 
   @@index([postId])
-  @@map("Post_Uploads")
+  @@map("Post_Upload")
 }
 
 // ENUMS

@@ -106,11 +106,11 @@ export class CommentService {
           comment.id,
         );
 
-        const likes = await this.prisma.commentLikes.count({
+        const likes = await this.prisma.commentLike.count({
           where: { commentId: comment.id },
         });
 
-        const isLiked = await this.prisma.commentLikes.findUnique({
+        const isLiked = await this.prisma.commentLike.findUnique({
           where: {
             userId_commentId: {
               userId: user.id,
@@ -155,11 +155,11 @@ export class CommentService {
       comment.id,
     );
 
-    const likes = await this.prisma.commentLikes.count({
+    const likes = await this.prisma.commentLike.count({
       where: { commentId: comment.id },
     });
 
-    const isLiked = await this.prisma.commentLikes.findUnique({
+    const isLiked = await this.prisma.commentLike.findUnique({
       where: {
         userId_commentId: {
           userId: user.id,
@@ -198,11 +198,11 @@ export class CommentService {
       comment.id,
     );
 
-    const likes = await this.prisma.commentLikes.count({
+    const likes = await this.prisma.commentLike.count({
       where: { commentId: comment.id },
     });
 
-    const isLiked = await this.prisma.commentLikes.findUnique({
+    const isLiked = await this.prisma.commentLike.findUnique({
       where: {
         userId_commentId: {
           userId: user.id,
@@ -265,7 +265,7 @@ export class CommentService {
         'comment not founded, make sure it belongs to the post',
       );
 
-    const existingLike = await this.prisma.commentLikes.findUnique({
+    const existingLike = await this.prisma.commentLike.findUnique({
       where: {
         userId_commentId: {
           userId: user.id,
@@ -275,7 +275,7 @@ export class CommentService {
     });
 
     if (existingLike) {
-      await this.prisma.commentLikes.delete({
+      await this.prisma.commentLike.delete({
         where: {
           userId_commentId: {
             userId: user.id,
@@ -285,7 +285,7 @@ export class CommentService {
       });
       return { message: 'Comment unliked successfully' };
     } else {
-      await this.prisma.commentLikes.create({
+      await this.prisma.commentLike.create({
         data: {
           commentId,
           userId: user.id,

@@ -1,13 +1,5 @@
 import { Type } from 'class-transformer';
-import {
-  IsArray,
-  IsNotEmpty,
-  IsNumber,
-  IsOptional,
-  IsString,
-  ValidateNested,
-} from 'class-validator';
-import { CreateFileDto } from 'src/common/dtos/create-file.dto';
+import { IsArray, IsNotEmpty, IsNumber, IsString } from 'class-validator';
 
 export class CreatePostDto {
   @IsNotEmpty()
@@ -18,9 +10,4 @@ export class CreatePostDto {
   @IsNumber({}, { each: true })
   @Type(() => Number)
   tagIds: number[];
-
-  // @IsOptional()
-  // @ValidateNested()
-  // @Type(() => CreateFileDto)
-  // fileData?: CreateFileDto;
 }

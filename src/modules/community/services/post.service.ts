@@ -152,7 +152,7 @@ export class PostService {
     });
     return {
       ...serializePost(post),
-      isSaved: post?.savedPost.length > 0,
+      isSaved: post?.savedPosts.length > 0,
       isReacted: isReacted ? true : false,
       reactionType: isReacted?.type || null,
     };

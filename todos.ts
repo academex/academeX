@@ -12,25 +12,23 @@
 // try to find a & delete an existing reply that it's parent not exists
 
 //? Today's Plan:
-// savedPost in popular route, in gest user case
-// add type to serialize reply input
-// testing
+// poll post type
+// handle the end date in poll
+// how to handle the multiple polls.
+
+//? db schema changes:
 
 //TODO [MY WEEK - URGINT]
-// add to "ask asem": about what to do with liking comment's and replies.
 // create a baseResponse<T> => {status,message,data}, PaginatedResponse<T>=> {status,message, stat, meta}, and don't use intercetor
 
-// user can like his comment and other user's comments.
-// implement reply liks
-// create many comment in one request
-
-//  poll post type
-//  use transactions and promises.all() => in required cases.
 //  make the findall and findone (in post moduel) reachable to guest users and handle it in the service level.
 //  refactor post.controller, use paginationbuiler from utils inteaded of the one in the class,
 //  add type called paginationOptions that repersent this: { skip: number; take: number } to use it in controller and services
+// add type to serialize reply input
+// testing
 
 // TODO [NOT]
+// add the likesNum and reactionsNum to post, comment, and reply, and update them in each like or reaction.instead of querying each time about it and joining it. (use transaction)
 // use logger in each catch block
 // refreash token (yt bookmarks)
 // add logger to all the app.
@@ -39,7 +37,7 @@
 // ci/cd: -change the event in main.yml to PR, and do the most work and push to developement, and when need to push to server create PR.
 // user can delete his account
 
-// TODO [FEE TIME...]
+// TODO [FrEE TIME...]
 // - docker.
 // - aws account.
 
