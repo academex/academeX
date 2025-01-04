@@ -3,9 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DATABASE_URL_UNPOOLED")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  // directUrl = env("DATABASE_URL_UNPOOLED")
 }
 
 // MODELS
@@ -38,7 +38,6 @@ model User {
   savedPosts   SavedPost[]
   commentLikes CommentLike[]
   replyLikes   ReplyLike[]
-  polls        Poll[]
   pollVotes    PollVote[]
 
   @@index([email])
@@ -90,7 +89,8 @@ model Post {
   comments    Comment[]
   reactions   Reaction[]
   savedPosts  SavedPost[]
-  polls       Poll[]
+  poll        Poll?
+  pollId      Int?         @unique @map("poll_id")
 
   @@index([userId])
   @@map("post")
@@ -105,10 +105,8 @@ model Poll {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
-  user        User         @relation(fields: [userId], references: [id])
-  userId      Int          @map("user_id")
   post        Post         @relation(fields: [postId], references: [id])
-  postId      Int          @map("post_id")
+  postId      Int          @unique @map("post_id")
   pollOptions PollOption[]
 
   @@map("poll")

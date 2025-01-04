@@ -20,7 +20,7 @@ export class PostService {
     user: User,
     uploads: { images?: Express.Multer.File[]; file?: Express.Multer.File[] },
   ): Promise<PostResponse> {
-    const { tagIds, content } = createPostDto;
+    const { tagIds, content, poll } = createPostDto;
 
     // Tags validation
     await this.validateTags(tagIds, user.tagId);
@@ -51,6 +51,20 @@ export class PostService {
         tags: {
           connect: tagIds.map((tagId) => ({ id: tagId })),
         },
+        ...(poll && {
+          poll: {
+            create: {
+              question: poll.question,
+              endDate: poll.endDate,
+              pollOptions: {
+                create: poll.options.map((option, indx) => ({
+                  content: option,
+                  order: indx,
+                })),
+              },
+            },
+          },
+        }),
       },
       select: postSelect(user),
     });
@@ -320,4 +334,45 @@ export class PostService {
 
     return stat;
   }
+  async vote(userId: number, optionId: number) {
+    return await this.prisma.$transaction(async (tx) => {
+      // Get the poll option and its associated poll
+      const pollOption = await tx.pollOption.findUnique({
+      where: { id: optionId },
+      include: { poll: true },
+      });
+  
+      if (!pollOption) {
+      throw new BadRequestException('Poll option not found');
+      }
+  
+      // Check if poll has ended
+      if (pollOption.poll.endDate < new Date()) {
+      throw new BadRequestException('Poll has ended');
+      }
+  
+      // Check if user has already voted on this poll
+      const existingVote = await tx.pollVote.findFirst({
+      where: {
+        userId,
+        pollOption: {
+        pollId: pollOption.pollId,
+        },
+      },
+      });
+  
+      if (existingVote) {
+      throw new BadRequestException('User has already voted in this poll');
+      }
+  
+      // Create the vote
+      return await tx.pollVote.create({
+      data: {
+        userId,
+        pollOptionId: optionId,
+      },
+      });
+    });
+    }
 }
+

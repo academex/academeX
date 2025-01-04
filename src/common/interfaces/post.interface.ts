@@ -7,6 +7,10 @@ export interface PostResponse extends BaseEntity {
   content: string;
   file: { url: string; name: string };
   images: { url: string; name: string }[];
+  poll: {
+    question: string;
+    pollOptions: { id: number; content: string; order: number }[];
+  };
   tags: TagResponse[];
   user: BaseUser;
   reactions?: {

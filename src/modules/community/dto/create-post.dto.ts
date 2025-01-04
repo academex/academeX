@@ -1,5 +1,13 @@
 import { Type } from 'class-transformer';
-import { IsArray, IsNotEmpty, IsNumber, IsString } from 'class-validator';
+import {
+  IsArray,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
+import { CreatePollDto } from './poll.dto';
 
 export class CreatePostDto {
   @IsNotEmpty()
@@ -10,4 +18,9 @@ export class CreatePostDto {
   @IsNumber({}, { each: true })
   @Type(() => Number)
   tagIds: number[];
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => CreatePollDto)
+  poll?: CreatePollDto;
 }

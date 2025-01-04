@@ -14,7 +14,11 @@
 //? Today's Plan:
 // poll post type
 // handle the end date in poll
-// how to handle the multiple polls.
+// when getting the poll post, return it's statistic
+// voting in poll
+//  - check of the end date. 
+//  - check if the user already voted.
+//  - add the vote to the poll option.
 
 //? db schema changes:
 

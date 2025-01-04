@@ -12,6 +12,18 @@ export const postSelect = (user?: User) =>
         name: true,
       },
     },
+    poll: {
+      select: {
+        question: true,
+        pollOptions: {
+          select: {
+            id: true,
+            content: true,
+            order: true,
+          },
+        },
+      },
+    },
     fileUrl: true,
     fileName: true,
     createdAt: true,
