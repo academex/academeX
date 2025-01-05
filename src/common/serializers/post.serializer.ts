@@ -17,7 +17,24 @@ export const serializePost = (post: PostSelectType): PostResponse => {
       url: upload.url,
       name: upload.name,
     })),
-    poll: post.poll,
+    // poll: post.poll,
+    poll: post.poll
+      ? {
+          id: post.poll.id,
+          question: post.poll.question,
+          pollOptions: post.poll.pollOptions.map((option) => ({
+            id: option.id,
+            content: option.content,
+            order: option.order,
+            count: option.count,
+            isVoted: option.pollVotes?.length > 0 || false,
+          })),
+          votedOptionId:
+            post.poll.pollOptions.find((opt) => opt.pollVotes?.length > 0)
+              ?.id || null,
+        }
+      : null,
+
     comments: post._count.comments,
     isSaved: post.savedPosts ? post.savedPosts.length > 0 : false,
     reactions: {

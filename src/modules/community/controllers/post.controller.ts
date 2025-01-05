@@ -77,6 +77,15 @@ export class PostController {
     );
   }
 
+  @Post('vote')
+  async vote(
+    @UserIdentity() user: User,
+    @Body('pollId', ParseIntPipe) pollId: number,
+    @Body('optionId', ParseIntPipe) optionId: number,
+  ) {
+    return this.postService.vote(pollId, optionId, user);
+  }
+
   // get all saved posts
   @Get('saved')
   async savedPost(

@@ -117,6 +117,7 @@ model PollOption {
   id        Int        @id @default(autoincrement())
   content   String
   order     Int        @default(0)
+  count     Int        @default(0)
   poll      Poll       @relation(fields: [pollId], references: [id])
   pollId    Int        @map("poll_id")
   pollVotes PollVote[]

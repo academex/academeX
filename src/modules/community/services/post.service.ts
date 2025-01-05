@@ -263,6 +263,78 @@ export class PostService {
     };
   }
 
+  async vote(pollId: number, optionId: number, user: User) {
+    const userId = user.id;
+    return await this.prisma.$transaction(async (tx) => {
+      // Get the poll option and its associated poll
+      const pollOption = await tx.pollOption.findFirst({
+        where: { id: optionId, pollId: pollId },
+        select: {
+          poll: true,
+          id: true,
+          content: true,
+          order: true,
+        },
+      });
+
+      if (!pollOption) {
+        throw new BadRequestException(
+          "Poll option not found, make sure you provide a valid option and poll's data",
+        );
+      }
+
+      // Check if poll has ended
+      if (pollOption.poll.endDate < new Date()) {
+        throw new BadRequestException('Poll has ended');
+      }
+
+      // Check if user has already voted on this poll
+      const existingVote = await tx.pollVote.findUnique({
+        where: {
+          userId_pollOptionId: {
+            userId,
+            pollOptionId: optionId,
+          },
+        },
+      });
+
+      if (existingVote) {
+        throw new BadRequestException('User has already voted in this poll');
+      }
+
+      //update the pollOption count
+      await tx.pollOption.update({
+        where: { id: optionId },
+        data: {
+          count: {
+            increment: 1,
+          },
+        },
+      });
+
+      // Create the vote
+      const voted = await tx.pollVote.create({
+        data: {
+          pollOption: {
+            connect: {
+              id: optionId,
+            },
+          },
+          user: {
+            connect: {
+              id: userId,
+            },
+          },
+        },
+      });
+
+      if (!voted) {
+        throw new BadRequestException('Something went wrong while voting');
+      }
+      return { message: 'Voted successfully' };
+    });
+  }
+
   //! Helper Functions
   private async validateTags(tagIds: number[], userTagId: number) {
     // Get user's tag info
@@ -334,45 +406,4 @@ export class PostService {
 
     return stat;
   }
-  async vote(userId: number, optionId: number) {
-    return await this.prisma.$transaction(async (tx) => {
-      // Get the poll option and its associated poll
-      const pollOption = await tx.pollOption.findUnique({
-      where: { id: optionId },
-      include: { poll: true },
-      });
-  
-      if (!pollOption) {
-      throw new BadRequestException('Poll option not found');
-      }
-  
-      // Check if poll has ended
-      if (pollOption.poll.endDate < new Date()) {
-      throw new BadRequestException('Poll has ended');
-      }
-  
-      // Check if user has already voted on this poll
-      const existingVote = await tx.pollVote.findFirst({
-      where: {
-        userId,
-        pollOption: {
-        pollId: pollOption.pollId,
-        },
-      },
-      });
-  
-      if (existingVote) {
-      throw new BadRequestException('User has already voted in this poll');
-      }
-  
-      // Create the vote
-      return await tx.pollVote.create({
-      data: {
-        userId,
-        pollOptionId: optionId,
-      },
-      });
-    });
-    }
 }
-
