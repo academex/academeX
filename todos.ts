@@ -1,24 +1,16 @@
 // !DB:
 
-//? COMMIT message:
+//? COMMIT message: fix reacting unexisting post bug, testing popular route (with user and without user), and testing poll posts (with user and without user).
 
 //? db schema changes:
 
 //? Today's Plan:
-// //create poll post (done)
-// voting:
-////  - check of the end date.
-// // - check if the user already voted (user can't change his vote after voting).
-//// when getting the poll post, return it's statistic (not a sensitive data to make a new route for getting the statistic)
-// //return which option the user voted for.
 
 //TODO [MY WEEK - URGINT]
-// todo: add transactin in create pot that contain the upload and the post creation.
 // create a baseResponse<T> => {status,message,data}, PaginatedResponse<T>=> {status,message, stat, meta}, and don't use intercetor
-//  make the findall and findone (in post moduel) reachable to guest users and handle it in the service level.
-//  refactor post.controller, use paginationbuiler from utils inteaded of the one in the class,
-//  add type called paginationOptions that repersent this: { skip: number; take: number } to use it in controller and services
-// add type to serialize reply input
+// make the findall and findone (in post moduel) reachable to guest users and handle it in the service level.
+// refactor post.controller, use paginationbuiler from utils inteaded of the one in the class,
+// add type called paginationOptions that repersent this: { skip: number; take: number } to use it in controller and services
 // testing
 
 // TODO [NOT]
@@ -26,7 +18,7 @@
 // add the likesNum and reactionsNum to post, comment, and reply, and update them in each like or reaction.instead of querying each time about it and joining it. (use transaction)
 // use logger in each catch block
 // add logger to all the app.
-// add the path to all uplodad(files, images) and store, return it to the client so in deltion the client can delete it.
+// add the path to all uploaded(files, images) and store, return it to the client so in deltion the client can delete it.
 // add this: orderBy: { createdAt: 'desc' } in getting the get post reactions ,
 // ci/cd: -change the event in main.yml to PR, and do the most work and push to developement, and when need to push to server create PR.
 // user can delete his account

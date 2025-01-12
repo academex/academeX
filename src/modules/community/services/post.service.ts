@@ -129,7 +129,7 @@ export class PostService {
     const [total, posts] = await Promise.all([
       this.prisma.post.count(),
       this.prisma.post.findMany({
-        select: postSelect(),
+        select: postSelect(user),
         orderBy: { createdAt: 'desc' },
         ...paginationOptions,
       }),
@@ -206,6 +206,11 @@ export class PostService {
         return updatedReaction;
       }
     } else {
+      // checking if the post is exist
+      const post = await this.prisma.post.findUnique({
+        where: { id },
+      });
+      if (!post) throw new BadRequestException('Post not found');
       // If no existing reaction, create a new one
       const newReaction = await this.prisma.reaction.create({
         data: {
