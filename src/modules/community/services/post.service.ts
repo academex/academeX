@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/modules/database/prisma.service';
 import { ReactionType, User } from '@prisma/client';
 import { CreatePostDto } from '../dto/create-post.dto';
@@ -170,6 +174,41 @@ export class PostService {
       isReacted: isReacted ? true : false,
       reactionType: isReacted?.type || null,
     };
+  }
+
+  async userPosts(id: number) {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+    });
+
+    if (!user) throw new NotFoundException('User not found');
+    // count total posts based on the filtering options
+    // get posts based on the filtering options
+    const [total, posts] = await Promise.all([
+      this.prisma.post.count({ where: { userId: id } }),
+      this.prisma.post.findMany({
+        where: { userId: id },
+        select: postSelect(user),
+        orderBy: { createdAt: 'desc' },
+        // ...paginationOptions,
+      }),
+    ]);
+
+    const data = await Promise.all(
+      posts.map(async (post) => {
+        const isReacted = await this.prisma.reaction.findUnique({
+          where: { userId_postId: { userId: user.id, postId: post.id } },
+        });
+        const readyPost = {
+          ...serializePost(post),
+          isReacted: !!isReacted,
+          reactionType: isReacted?.type || null,
+        };
+        return readyPost;
+      }),
+    );
+
+    return serializePaginatedPosts(data, { page: 1, limit: 10, total });
   }
 
   async reactToPost(id: number, user: User, type: ReactionType) {

@@ -9,6 +9,7 @@ import { PrismaService } from '../database/prisma.service';
 import { User } from '@prisma/client';
 import { hash } from 'bcrypt';
 import { SignupDto } from '../auth/dto/signup.dto';
+import { postSelect } from 'src/common/prisma/selects';
 
 @Injectable()
 export class UserService {
@@ -43,6 +44,37 @@ export class UserService {
         },
       },
     });
+    return user;
+  }
+
+  async profile(username: string, ReqUser: User) {
+    const user = await this.prisma.user.findUnique({
+      where: { username },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        bio: true,
+        currentYear: true,
+        gender: true,
+        phoneNum: true,
+        photoUrl: true,
+        role: true,
+        tag: {
+          select: {
+            name: true,
+            collegeAr: true,
+            collegeEn: true,
+            majorAr: true,
+            majorEn: true,
+          },
+        },
+      },
+    });
+
+    if (!user) throw new NotFoundException('user not found.');
     return user;
   }
 
