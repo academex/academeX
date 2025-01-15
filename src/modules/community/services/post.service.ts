@@ -88,74 +88,49 @@ export class PostService {
     { page, limit }: FilterPostsDto,
   ): Promise<PaginatedResponse<PostResponse>> {
     const tagId = filteringOptions.tagId || user.tagId;
-
     const whereCondition = {
       tags: {
         some: { id: tagId },
       },
     };
 
-    // count total posts based on the filtering options
-    // get posts based on the filtering options
-    const [total, posts] = await Promise.all([
-      this.prisma.post.count({ where: whereCondition }),
-      this.prisma.post.findMany({
-        where: whereCondition,
-        select: postSelect(user),
-        orderBy: { createdAt: 'desc' },
-        ...paginationOptions,
-      }),
-    ]);
-
-    const data = await Promise.all(
-      posts.map(async (post) => {
-        const isReacted = await this.prisma.reaction.findUnique({
-          where: { userId_postId: { userId: user.id, postId: post.id } },
-        });
-        const readyPost = {
-          ...serializePost(post),
-          isReacted: !!isReacted,
-          reactionType: isReacted?.type || null,
-        };
-        return readyPost;
-      }),
+    return this.getReadyPosts(
+      paginationOptions,
+      { page, limit },
+      user,
+      whereCondition,
     );
-
-    return serializePaginatedPosts(data, { page, limit, total });
   }
 
   async findPopular(
-    user: User,
+    user: User | undefined,
     paginationOptions: { skip: number; take: number },
-    filteringOptions: { tagId: number },
     { page, limit }: FilterPostsDto,
   ): Promise<PaginatedResponse<PostResponse>> {
-    const [total, posts] = await Promise.all([
-      this.prisma.post.count(),
-      this.prisma.post.findMany({
-        select: postSelect(user),
-        orderBy: { createdAt: 'desc' },
-        ...paginationOptions,
-      }),
-    ]);
+    return this.getReadyPosts(paginationOptions, { page, limit }, user);
+  }
 
-    const data = await Promise.all(
-      posts.map(async (post) => {
-        const isReacted = user
-          ? await this.prisma.reaction.findUnique({
-              where: { userId_postId: { userId: user.id, postId: post.id } },
-            })
-          : false;
-        const readyPost = {
-          ...serializePost(post),
-          isReacted: !!isReacted,
-          reactionType: (isReacted && isReacted?.type) || null,
-        };
-        return readyPost;
-      }),
+  async userPosts(
+    username: string,
+    user: User,
+    paginationOptions: { skip: number; take: number },
+    { page, limit }: FilterPostsDto,
+  ) {
+    const userExists = await this.prisma.user.findUnique({
+      where: { username },
+    });
+
+    if (!userExists) throw new NotFoundException('User not found');
+
+    const whereCondition = {
+      user: { username },
+    };
+    return this.getReadyPosts(
+      paginationOptions,
+      { page, limit },
+      user,
+      whereCondition,
     );
-
-    return serializePaginatedPosts(data, { page, limit, total });
   }
 
   async findOne(id: number, user: User): Promise<PostResponse> {
@@ -174,41 +149,6 @@ export class PostService {
       isReacted: isReacted ? true : false,
       reactionType: isReacted?.type || null,
     };
-  }
-
-  async userPosts(id: number) {
-    const user = await this.prisma.user.findUnique({
-      where: { id },
-    });
-
-    if (!user) throw new NotFoundException('User not found');
-    // count total posts based on the filtering options
-    // get posts based on the filtering options
-    const [total, posts] = await Promise.all([
-      this.prisma.post.count({ where: { userId: id } }),
-      this.prisma.post.findMany({
-        where: { userId: id },
-        select: postSelect(user),
-        orderBy: { createdAt: 'desc' },
-        // ...paginationOptions,
-      }),
-    ]);
-
-    const data = await Promise.all(
-      posts.map(async (post) => {
-        const isReacted = await this.prisma.reaction.findUnique({
-          where: { userId_postId: { userId: user.id, postId: post.id } },
-        });
-        const readyPost = {
-          ...serializePost(post),
-          isReacted: !!isReacted,
-          reactionType: isReacted?.type || null,
-        };
-        return readyPost;
-      }),
-    );
-
-    return serializePaginatedPosts(data, { page: 1, limit: 10, total });
   }
 
   async reactToPost(id: number, user: User, type: ReactionType) {
@@ -449,5 +389,40 @@ export class PostService {
     }, {});
 
     return stat;
+  }
+
+  async getReadyPosts(
+    paginationOptions: { skip: number; take: number },
+    { page, limit }: { page: number; limit: number },
+    user: User | undefined,
+    whereCondition?: any,
+  ): Promise<PaginatedResponse<PostResponse>> {
+    const [total, posts] = await Promise.all([
+      this.prisma.post.count({ where: whereCondition }),
+      this.prisma.post.findMany({
+        where: whereCondition,
+        select: postSelect(user),
+        orderBy: { createdAt: 'desc' },
+        ...paginationOptions,
+      }),
+    ]);
+
+    const data = await Promise.all(
+      posts.map(async (post) => {
+        const isReacted = user
+          ? await this.prisma.reaction.findUnique({
+              where: { userId_postId: { userId: user.id, postId: post.id } },
+            })
+          : false;
+        const readyPost = {
+          ...serializePost(post),
+          isReacted: !!isReacted,
+          reactionType: (isReacted && isReacted?.type) || null,
+        };
+        return readyPost;
+      }),
+    );
+
+    return serializePaginatedPosts(data, { page, limit, total });
   }
 }

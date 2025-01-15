@@ -63,11 +63,25 @@ export class PostController {
     @Query() filterPostsDto: FilterPostsDto,
   ) {
     const paginationOptions = this.buildPaginationOptions(filterPostsDto);
-    const filteringOptions = this.buildFilteringOptions(filterPostsDto);
     return this.postService.findPopular(
       user,
       paginationOptions,
-      filteringOptions,
+      filterPostsDto,
+    );
+  }
+
+  @OptionalAuth()
+  @Get('user/:username')
+  userPosts(
+    @UserIdentity() user: User | undefined,
+    @Param('username') username: string,
+    @Query() filterPostsDto: FilterPostsDto,
+  ) {
+    const paginationOptions = this.buildPaginationOptions(filterPostsDto);
+    return this.postService.userPosts(
+      username,
+      user,
+      paginationOptions,
       filterPostsDto,
     );
   }
