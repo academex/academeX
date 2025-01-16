@@ -6,10 +6,9 @@ import {
 } from '@nestjs/common';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PrismaService } from '../database/prisma.service';
-import { User } from '@prisma/client';
+import { User, Gender } from '@prisma/client';
 import { hash } from 'bcrypt';
 import { SignupDto } from '../auth/dto/signup.dto';
-import { postSelect } from 'src/common/prisma/selects';
 
 @Injectable()
 export class UserService {
@@ -118,5 +117,27 @@ export class UserService {
 
   remove(id: number) {
     return `This action removes a #${id} user`;
+  }
+
+  // func to update the user password,
+
+  // func to update the user's data (username, firstName, lastName, email, photoUrl, bio, currentYear, gender, phoneNum, tagId)
+  async updateUser(user: User, data: UpdateUserDto) {
+    //if the user wants to change the tagId, check if the new tagId is valid
+    //if the user wants to change the currentYear, check if the new currentYear is valid for the new tagId
+    const { tagId, ...restData } = data;
+    const updatedUser = await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        ...restData,
+        ...(tagId && {
+          tag: {
+            connect: { id: tagId },
+          },
+        }),
+      },
+    });
+
+    return updatedUser;
   }
 }
