@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PrismaService } from '../database/prisma.service';
-import { User, Gender } from '@prisma/client';
+import { User, Tag } from '@prisma/client';
 import { hash } from 'bcrypt';
 import { SignupDto } from '../auth/dto/signup.dto';
 
@@ -17,33 +17,40 @@ export class UserService {
   async create(userData: SignupDto): Promise<User> {
     const { tagId, ...rest } = userData;
 
-    const [tag, userExists] = await this.prisma.$transaction([
-      this.prisma.tag.findUnique({ where: { id: tagId } }),
-      this.prisma.user.findFirst({
-        where: {
-          OR: [{ email: userData.email }, { username: userData.username }],
-        },
-      }),
-    ]);
-
-    if (!tag) throw new NotFoundException('tag not found');
-    if (userData.currentYear > tag.yearsNum)
-      throw new BadRequestException(
-        'current year not valid for this college and major',
-      );
-
-    if (userExists) throw new BadRequestException('User already exists');
+    const tag = await this.validateTag(tagId);
+    this.validateTagCurrentYearAndThrow(tag, userData.currentYear);
     rest.password = await hash(rest.password, 10);
 
     const user = await this.prisma.user.create({
       data: {
-        ...rest,
+        ...rest,//
         tag: {
           connect: { id: tagId },
         },
       },
     });
     return user;
+  }
+
+  // UpdateUserDto => ensure that the email, username and tagId are valid.
+  async updateUser(user: User, data: UpdateUserDto): Promise<User> {
+    const { tagId, ...restData } = data;
+    const tag = await this.validateTag(tagId);
+    this.validateTagCurrentYearAndThrow(tag, user.currentYear);
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        ...restData,
+        ...(tagId && {
+          tag: {
+            connect: { id: tagId },
+          },
+        }),
+      },
+    });
+
+    return updatedUser;
   }
 
   async profile(username: string, ReqUser: User) {
@@ -111,33 +118,20 @@ export class UserService {
     return `This action returns all user`;
   }
 
-  update(id: number, updateUserDto: UpdateUserDto) {
-    return `This action updates a #${id} user`;
-  }
-
   remove(id: number) {
     return `This action removes a #${id} user`;
   }
 
-  // func to update the user password,
+  async validateTag(tagId: number): Promise<Tag> {
+    const tag = await this.prisma.tag.findUnique({ where: { id: tagId } });
+    if (!tag) throw new NotFoundException('tag not found');
+    return tag;
+  }
 
-  // func to update the user's data (username, firstName, lastName, email, photoUrl, bio, currentYear, gender, phoneNum, tagId)
-  async updateUser(user: User, data: UpdateUserDto) {
-    //if the user wants to change the tagId, check if the new tagId is valid
-    //if the user wants to change the currentYear, check if the new currentYear is valid for the new tagId
-    const { tagId, ...restData } = data;
-    const updatedUser = await this.prisma.user.update({
-      where: { id: user.id },
-      data: {
-        ...restData,
-        ...(tagId && {
-          tag: {
-            connect: { id: tagId },
-          },
-        }),
-      },
-    });
-
-    return updatedUser;
+  validateTagCurrentYearAndThrow(tag: Tag, currentYear: number) {
+    if (currentYear > tag.yearsNum)
+      throw new BadRequestException(
+        'current year not valid for this college and major',
+      );
   }
 }

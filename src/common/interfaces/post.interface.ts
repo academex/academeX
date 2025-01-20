@@ -11,7 +11,8 @@ export interface PostResponse extends BaseEntity {
     id: number;
     question: string;
     pollOptions: { id: number; content: string; order: number }[];
-    votedOptionId: any;
+    // votedOptionId: any;
+    totalVotes: number;
   };
   tags: TagResponse[];
   user: BaseUser;

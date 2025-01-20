@@ -29,9 +29,13 @@ export const serializePost = (post: PostSelectType): PostResponse => {
             count: option.count,
             isVoted: option.pollVotes?.length > 0 || false,
           })),
-          votedOptionId:
-            post.poll.pollOptions.find((opt) => opt.pollVotes?.length > 0)
-              ?.id || null,
+          totalVotes: post.poll.pollOptions.reduce(
+            (sum, option) => sum + option.count,
+            0,
+          ),
+          // votedOptionId:
+          //   post.poll.pollOptions.find((opt) => opt.pollVotes?.length > 0)
+          //     ?.id || null,
         }
       : null,
 

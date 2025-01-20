@@ -21,7 +21,7 @@ export class IsValidTagConstraint implements ValidatorConstraintInterface {
   }
 }
 
-export function IsValidTag(validationOptions?: ValidationOptions) {
+export function IsTagValid(validationOptions?: ValidationOptions) {
   return function (object: Object, propertyName: string) {
     registerDecorator({
       target: object.constructor,
