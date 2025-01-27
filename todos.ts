@@ -1,23 +1,26 @@
 //? db schema changes:
 // !DB:
 
-//? COMMIT message: apply validator decorators in user creation & updating, working on user's profile: (updating user's data, photo uploading), started with updating password.
+//? COMMIT message: 
 
-//? Today's Plan:
+//TODO [MY WEEK - URGINT]
+// solving flutter git repo issue.
+// recapping whole user stories (signup, signin, update user's data). 
 // test signup.
 //  - test normal case.
 //  - duplicated username, email.
 //  - not existing tag.
-// updateUser.
+// test update user.
+// start with reset password.
 
-//TODO [MY WEEK - URGINT]
+
+
+// TODO [NOT]
 // create a baseResponse<T> => {status,message,data}, PaginatedResponse<T>=> {status,message, stat, meta}, and don't use intercetor
 // make the findall and findone (in post moduel) reachable to guest users and handle it in the service level.
 // refactor post.controller, use paginationbuiler from utils inteaded of the one in the class,
 // add type called paginationOptions that repersent this: { skip: number; take: number } to use it in controller and services
 // testing
-
-// TODO [NOT]
 // go through each service and make sure it's self dependant, don't make user.service run a query on tag model [X], ex: in user.service: this.prisma.tag.findOne().
 // create a corn job for deleting replies that their parent not exists.
 // add the likesNum and reactionsNum to post, comment, and reply, and update them in each like or reaction.instead of querying each time about it and joining it. (use transaction)
