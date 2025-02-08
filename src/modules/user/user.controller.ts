@@ -13,6 +13,7 @@ import { UserService } from './user.service';
 import { OptionalAuth } from 'src/common/decorators/optional-auth.decorator';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import { UpdatePassword } from './dto/update-password.dto';
 
 @Controller('user')
 export class UserController {
@@ -33,5 +34,10 @@ export class UserController {
     @Body() data: UpdateUserDto,
   ) {
     return this.userService.updateUser(user, data);
+  }
+
+  @Put('update-password')
+  updatePassword(@UserIdentity() user: User, @Body() data: UpdatePassword) {
+    return this.userService.updatePassword(user, data);
   }
 }

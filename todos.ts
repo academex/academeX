@@ -4,7 +4,6 @@
 //? COMMIT message: 
 
 //TODO [MY WEEK - URGINT]
-// solving flutter git repo issue.
 // recapping whole user stories (signup, signin, update user's data). 
 // test signup.
 //  - test normal case.

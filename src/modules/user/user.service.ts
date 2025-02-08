@@ -2,16 +2,20 @@ import {
   BadRequestException,
   HttpException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PrismaService } from '../database/prisma.service';
 import { User, Tag } from '@prisma/client';
-import { hash } from 'bcrypt';
+import { hash, compare } from 'bcrypt';
 import { SignupDto } from '../auth/dto/signup.dto';
+import { UpdatePassword } from './dto/update-password.dto';
 
 @Injectable()
 export class UserService {
+  private readonly logger = new Logger(UserService.name);
+
   constructor(private prisma: PrismaService) {}
 
   async create(userData: SignupDto): Promise<User> {
@@ -23,7 +27,7 @@ export class UserService {
 
     const user = await this.prisma.user.create({
       data: {
-        ...rest,//
+        ...rest, //
         tag: {
           connect: { id: tagId },
         },
@@ -51,6 +55,43 @@ export class UserService {
     });
 
     return updatedUser;
+  }
+
+  async updatePassword(user: User, data: UpdatePassword) {
+    this.logger.log('in update password ');
+
+    const { password, confirmPassword, newPassword } = data;
+    if (password !== confirmPassword)
+      throw new BadRequestException(
+        'password must be the same as the confirm password',
+      );
+
+    // check if the password right
+    const userData = await this.prisma.user.findUnique({
+      where: { id: user.id },
+      select: {
+        password: true,
+      },
+    });
+    this.logger.log('userPassword', userData);
+
+    if (!(await compare(password, userData.password)))
+      throw new BadRequestException('incorrect password');
+
+    this.logger.log('right password');
+
+    // update the user's password after hashing it.
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password: await hash(password, 10),
+      },
+    });
+
+    this.logger.log('password updated');
+    // todo: logout of all devices.
+    // return a res
+    return { message: 'password updated' };
   }
 
   async profile(username: string, ReqUser: User) {
