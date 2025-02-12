@@ -81,17 +81,16 @@ export class UserService {
     this.logger.log('right password');
 
     // update the user's password after hashing it.
-    await this.prisma.user.update({
+    const updatedUser = await this.prisma.user.update({
       where: { id: user.id },
       data: {
-        password: await hash(password, 10),
+        password: await hash(newPassword, 10),
       },
     });
 
-    this.logger.log('password updated');
+    this.logger.log(updatedUser);
     // todo: logout of all devices.
-    // return a res
-    return { message: 'password updated' };
+    return { message: 'password updated', data: updatedUser };
   }
 
   async profile(username: string, ReqUser: User) {
