@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -12,7 +13,10 @@ import { UserIdentity } from 'src/common/decorators/user.decorator';
 import { UserService } from './user.service';
 import { OptionalAuth } from 'src/common/decorators/optional-auth.decorator';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import {
+  FileFieldsInterceptor,
+  FileInterceptor,
+} from '@nestjs/platform-express';
 import { UpdatePassword } from './dto/update-password.dto';
 
 @Controller('user')
@@ -26,15 +30,28 @@ export class UserController {
   }
 
   @Put('update')
-  @UseInterceptors(FileFieldsInterceptor([{ name: 'photoUrl', maxCount: 1 }]))
+  @UseInterceptors(
+    FileInterceptor('photoUrl', {
+      limits: { fileSize: 2 * 1024 * 1024 },
+      fileFilter: (req, file, cb) => {
+        if (!file.originalname.match(/\.(jpg|jpeg|png)$/)) {
+          return cb(
+            new BadRequestException(
+              'Invalid file type. Only JPG, PNG, and jpeg are allowed.',
+            ),
+            false,
+          );
+        }
+        cb(null, true);
+      },
+    }),
+  )
   updateUser(
     @UserIdentity() user: User,
-    @UploadedFile()
-    uploads: { photoUrl?: Express.Multer.File[] },
+    @UploadedFile() photoUrl: Express.Multer.File,
     @Body() data: UpdateUserDto,
   ) {
-    console.log('in update with file', uploads);
-    return this.userService.updateUser(user, data);
+    return this.userService.updateUser(user, data, photoUrl);
   }
 
   @Put('update-password')

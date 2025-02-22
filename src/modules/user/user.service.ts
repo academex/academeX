@@ -11,12 +11,16 @@ import { User, Tag } from '@prisma/client';
 import { hash, compare } from 'bcrypt';
 import { SignupDto } from '../auth/dto/signup.dto';
 import { UpdatePassword } from './dto/update-password.dto';
+import { StorageService } from '../storage/storage.service';
 
 @Injectable()
 export class UserService {
   private readonly logger = new Logger(UserService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private storageService: StorageService,
+  ) {}
 
   async create(userData: SignupDto): Promise<User> {
     const { tagId, ...rest } = userData;
@@ -37,10 +41,21 @@ export class UserService {
   }
 
   // UpdateUserDto => ensure that the email, username and tagId are valid.
-  async updateUser(user: User, data: UpdateUserDto): Promise<User> {
+  //todo: remove the old photoUrl for the same user.
+  async updateUser(
+    user: User,
+    data: UpdateUserDto,
+    photoUrl?: Express.Multer.File,
+  ): Promise<User> {
     const { tagId, currentYear, ...restData } = data;
     let tag: Tag | null = null;
     let userTag = null;
+
+    // hosting photoUrl on supabase.
+    if (photoUrl) {
+      const photoUrlPath = await this.storageService.uploadImage(photoUrl);
+      restData.photoUrl = photoUrlPath.url;
+    }
 
     // Validate new tag if provided
     if (tagId) {
@@ -69,6 +84,9 @@ export class UserService {
           tag: {
             connect: { id: tagId },
           },
+        }),
+        ...(currentYear && {
+          currentYear: currentYear,
         }),
       },
     });
