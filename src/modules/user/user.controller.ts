@@ -33,6 +33,7 @@ export class UserController {
     uploads: { photoUrl?: Express.Multer.File[] },
     @Body() data: UpdateUserDto,
   ) {
+    console.log('in update with file', uploads);
     return this.userService.updateUser(user, data);
   }
 

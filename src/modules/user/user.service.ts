@@ -38,9 +38,28 @@ export class UserService {
 
   // UpdateUserDto => ensure that the email, username and tagId are valid.
   async updateUser(user: User, data: UpdateUserDto): Promise<User> {
-    const { tagId, ...restData } = data;
-    const tag = await this.validateTag(tagId);
-    this.validateTagCurrentYearAndThrow(tag, user.currentYear);
+    const { tagId, currentYear, ...restData } = data;
+    let tag: Tag | null = null;
+    let userTag = null;
+
+    // Validate new tag if provided
+    if (tagId) {
+      tag = await this.validateTag(tagId);
+      this.validateTagCurrentYearAndThrow(tag, user.currentYear);
+    }
+
+    // Fetch user's existing tag only if needed
+    if (currentYear || !tag) {
+      userTag = await this.prisma.tag.findUnique({
+        where: { id: user.tagId },
+        select: { yearsNum: true },
+      });
+    }
+
+    // Validate new currentYear if provided
+    if (currentYear) {
+      this.validateTagCurrentYearAndThrow(tag || userTag, currentYear);
+    }
 
     const updatedUser = await this.prisma.user.update({
       where: { id: user.id },
@@ -61,7 +80,7 @@ export class UserService {
     this.logger.log('in update password ');
 
     const { password, confirmPassword, newPassword } = data;
-    if (password !== confirmPassword)
+    if (newPassword !== confirmPassword)
       throw new BadRequestException(
         'password must be the same as the confirm password',
       );
@@ -73,7 +92,6 @@ export class UserService {
         password: true,
       },
     });
-    this.logger.log('userPassword', userData);
 
     if (!(await compare(password, userData.password)))
       throw new BadRequestException('incorrect password');

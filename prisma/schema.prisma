@@ -32,11 +32,13 @@ model User {
   tag          Tag           @relation(fields: [tagId], references: [id])
   tagId        Int           @map("tag_id")
   posts        Post[]
+  libraries    Library[]
   comments     Comment[]
   replies      Reply[]
   reactions    Reaction[]
   savedPosts   SavedPost[]
   commentLikes CommentLike[]
+  stars        Star[]
   replyLikes   ReplyLike[]
   pollVotes    PollVote[]
 
@@ -61,8 +63,9 @@ model Tag {
   updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
 
   // Relations
-  users User[]
-  posts Post[]
+  users     User[]
+  posts     Post[]
+  libraries Library[]
   // @@index([slug])
 
   @@index([collegeEn])
@@ -250,18 +253,46 @@ model ReplyLike {
 }
 
 model Library {
-  id          Int      @id @default(autoincrement())
-  description String   @db.Text
-  url         String   @map("file_url")
-  name        String   @map("file_name")
-  size        Int      @map("file_size")
-  mimeType    String   @map("mime_type")
-  stars       Int?     @default(0)
-  isPublic    Boolean  @default(true)
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+  id          Int         @id @default(autoincrement())
+  name        String      @map("file_name")
+  type        LibraryType @default(SUMMARY)
+  description String      @db.Text
+  url         String      @map("file_url")
+  size        Int         @map("file_size")
+  mimeType    String      @map("mime_type")
+  stars       Int?        @default(0)
+  isPublic    Boolean     @default(true)
+  yearNum     Int         @map("year_num")
+  subject     String
 
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  // Relations
+  user   User @relation(fields: [userId], references: [id])
+  userId Int  @map("user_id")
+
+  tags Tag[]
+  star Star[]
+
+  @@index([userId])
   @@map("library")
+}
+
+model Star {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  // Relations
+  user      User    @relation(fields: [userId], references: [id])
+  userId    Int     @map("user_id")
+  library   Library @relation(fields: [libraryId], references: [id])
+  libraryId Int     @map("library_id")
+
+  @@unique([userId, libraryId])
+  @@index([libraryId])
+  @@map("star")
 }
 
 model PostUpload {
@@ -301,4 +332,11 @@ enum ReactionType {
   QUESTION
   INSIGHTFUL
   LIKE
+}
+
+enum LibraryType {
+  EXAM
+  SUMMARY
+  CHAPTER
+  BOOK
 }

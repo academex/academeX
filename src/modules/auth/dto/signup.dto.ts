@@ -9,11 +9,16 @@ import {
   IsPhoneNumber,
   IsEnum,
 } from 'class-validator';
+import {
+  IsEmailUnique,
+  IsUsernameUnique,
+} from 'src/common/decorators/validators';
 
 export class SignupDto {
   @IsNotEmpty()
   @IsString()
   @Length(3, 12)
+  @IsUsernameUnique()
   username: string;
 
   @IsNotEmpty()
@@ -26,6 +31,7 @@ export class SignupDto {
 
   @IsNotEmpty()
   @IsEmail()
+  @IsEmailUnique()
   email: string;
 
   @IsNotEmpty()
