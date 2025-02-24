@@ -30,6 +30,6 @@ export const replySelect = {
   },
 } as const;
 
-export type ReplySelectType = Prisma.PostGetPayload<{
+export type ReplySelectType = Prisma.ReplyGetPayload<{
   select: typeof replySelect;
 }>;

@@ -1,7 +1,7 @@
 import { Prisma, User } from '@prisma/client';
 import { baseUserSelect } from './user.select';
 
-export const librarySelect = (user?: User) =>
+export const fileSelect = (user?: User) =>
   ({
     id: true,
     name: true,
@@ -33,6 +33,6 @@ export const librarySelect = (user?: User) =>
     }),
   }) as const;
 
-export type librarySelectType = Prisma.PostGetPayload<{
-  select: ReturnType<typeof librarySelect>;
+export type FileSelectType = Prisma.LibraryGetPayload<{
+  select: ReturnType<typeof fileSelect>;
 }>;
