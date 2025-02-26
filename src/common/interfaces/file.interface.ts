@@ -15,5 +15,5 @@ export interface LibraryFileResponse extends BaseEntity {
   subject: string;
   tags: TagResponse[];
   user: BaseUser;
-  isStared?: boolean;
+  isStared: boolean;
 }

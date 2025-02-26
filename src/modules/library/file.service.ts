@@ -1,10 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { CreateFileDto } from './dto/create-file.dto';
-import { User } from '@prisma/client';
-import { LibraryFileResponse } from 'src/common/interfaces';
+import { Library, User } from '@prisma/client';
+import { LibraryFileResponse, PaginatedResponse } from 'src/common/interfaces';
 import { PrismaService } from '../database/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { fileSelect } from 'src/common/prisma/selects';
+import { FilterFilesDto } from './dto/filter-files.dto';
 
 @Injectable()
 export class FileService {
@@ -18,14 +19,24 @@ export class FileService {
     user: User,
     file: Express.Multer.File,
   ): Promise<LibraryFileResponse> {
-    // validate the yearNum to fit the tag.
-    // todo: use validate tags
+    // todo: validate the yearNum to fit the tag.
     const { tagIds, ...restData } = fileData;
+
+    // validate tags
+    const tags = await this.prisma.tag.findMany({
+      where: { id: { in: tagIds } },
+    });
+
+    if (tags.length !== tagIds.length) {
+      throw new BadRequestException(
+        'Tags not valid, please provide valid tags',
+      );
+    }
 
     const { path, url, fileName, fileSize, mimeType } =
       await this.storageService.uploadPDF(file);
 
-    return await this.prisma.library.create({
+    const newFile = await this.prisma.library.create({
       data: {
         ...restData,
         tags: {
@@ -40,10 +51,58 @@ export class FileService {
       },
       select: fileSelect(user),
     });
+
+    return { ...newFile, isStared: false };
   }
 
-  findAll() {
-    return `This action returns all library`;
+  async findAll(
+    user: User,
+    paginationOptions: { skip: number; take: number },
+    filteringOptions: { tagId: number; yearNum: number },
+    { page, limit }: FilterFilesDto,
+  ): Promise<PaginatedResponse<LibraryFileResponse>> {
+    const tagId = filteringOptions.tagId || user.tagId;
+    const yearNum = filteringOptions.yearNum || 1;
+
+    const whereCondition = {
+      AND: [{ tags: { some: { id: tagId } } }, { yearNum }],
+    };
+
+    const [total, files] = await Promise.all([
+      this.prisma.library.count({ where: whereCondition }),
+      this.prisma.library.findMany({
+        where: whereCondition,
+        select: fileSelect(user),
+        ...paginationOptions,
+      }),
+    ]);
+
+    const data = await Promise.all(
+      files.map(async (file) => {
+        const isStared = user
+          ? await this.prisma.star.findUnique({
+              where: {
+                userId_libraryId: { userId: user.id, libraryId: file.id },
+              },
+            })
+          : false;
+        const readyPost = {
+          ...file,
+          isStared: !!isStared,
+        };
+        return readyPost;
+      }),
+    );
+
+    return {
+      data,
+      meta: {
+        page,
+        limit,
+        total,
+        PagesCount: Math.ceil(total / limit),
+      },
+    };
   }
 
   findOne(id: number) {

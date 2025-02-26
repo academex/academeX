@@ -1,5 +1,5 @@
 import { LibraryType } from '@prisma/client';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsArray,
   IsEnum,
@@ -21,12 +21,13 @@ export class CreateFileDto {
   @IsEnum(LibraryType)
   type: LibraryType = LibraryType.SUMMARY;
 
-  @IsOptional()
+  // @IsOptional()
   @IsString()
   @Length(3, 250)
   description: string;
 
   @IsNotEmpty()
+  @Transform(({ value }) => Number(value))
   @IsNumber()
   @Min(1)
   yearNum: number;
