@@ -10,17 +10,24 @@ import {
   BadRequestException,
   UploadedFile,
   Query,
+  ParseIntPipe,
+  ParseEnumPipe,
 } from '@nestjs/common';
 import { FileService } from './file.service';
 import { CreateFileDto } from './dto/create-file.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UserIdentity } from 'src/common/decorators/user.decorator';
-import { User } from '@prisma/client';
+import { LibraryType, User } from '@prisma/client';
 import { FilterFilesDto } from './dto/filter-files.dto';
+import { StarFileService } from './star-file.service';
+import { FilterTypedFilesDto } from './dto/filter-typed-files.dto';
 
 @Controller('library')
 export class LibraryController {
-  constructor(private readonly fileService: FileService) {}
+  constructor(
+    private readonly fileService: FileService,
+    private readonly starFileService: StarFileService,
+  ) {}
 
   @Post()
   @UseInterceptors(
@@ -53,34 +60,39 @@ export class LibraryController {
 
   @Get()
   findAll(@UserIdentity() user: User, @Query() filterFilesDto: FilterFilesDto) {
-    const paginationOptions = this.buildPaginationOptions(filterFilesDto);
     const filteringOptions = this.buildFilteringOptions(filterFilesDto);
 
-    return this.fileService.findAll(
+    return this.fileService.findAll(user, filteringOptions);
+  }
+
+  @Get('type/:type')
+  getFilesByType(
+    @UserIdentity() user: User,
+    @Query() filterTypedFilesDto: FilterTypedFilesDto,
+    @Param('type', new ParseEnumPipe(LibraryType)) type: LibraryType,
+  ) {
+    const filteringOptions = this.buildFilteringOptions(filterTypedFilesDto);
+    const paginationOptions = this.buildPaginationOptions(filterTypedFilesDto);
+
+    return this.fileService.getFilesByType(
       user,
-      paginationOptions,
       filteringOptions,
-      filterFilesDto,
+      paginationOptions,
+      filterTypedFilesDto,
+      type,
     );
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.fileService.findOne(+id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateLibraryDto) {
-    return this.fileService.update(+id, updateLibraryDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.fileService.remove(+id);
+  @Get(':id/star')
+  starFile(
+    @UserIdentity() user: User,
+    @Param('id', ParseIntPipe) fileId: number,
+  ) {
+    return this.starFileService.starFile(user, fileId);
   }
 
   //! Helper Functions
-  buildFilteringOptions(filters: FilterFilesDto) {
+  buildFilteringOptions(filters: FilterFilesDto | FilterTypedFilesDto) {
     const tagId = parseInt(filters.tagId);
     const yearNum = filters.yearNum;
     return { tagId, yearNum };

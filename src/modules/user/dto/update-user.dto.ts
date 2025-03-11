@@ -45,6 +45,10 @@ export class UpdateUserDto {
   currentYear?: number;
 
   @IsOptional()
+  @IsEnum(Gender)
+  gender?: Gender;
+
+  @IsOptional()
   @IsPhoneNumber()
   @Length(10)
   phoneNum?: string;

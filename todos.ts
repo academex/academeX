@@ -1,7 +1,6 @@
 // fixing update-password bug, setup library module
 // !DB:
 
-
 //TODO [MY WEEK - URGINT]
 // test image uploading in update req.
 // start with library creation, uploading files -> creating new row -> returning the new row.
@@ -12,7 +11,6 @@
 //  - test normal case.
 //  - duplicated username, email.
 //  - not existing tag.
-// test update user.
 
 // TODO [NOT]
 // create a baseResponse<T> => {status,message,data}, PaginatedResponse<T>=> {status,message, stat, meta}, and don't use intercetor

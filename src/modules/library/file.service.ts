@@ -1,11 +1,12 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { CreateFileDto } from './dto/create-file.dto';
-import { Library, User } from '@prisma/client';
+import { Library, LibraryType, User } from '@prisma/client';
 import { LibraryFileResponse, PaginatedResponse } from 'src/common/interfaces';
 import { PrismaService } from '../database/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { fileSelect } from 'src/common/prisma/selects';
 import { FilterFilesDto } from './dto/filter-files.dto';
+import { FilterTypedFilesDto } from './dto/filter-typed-files.dto';
 
 @Injectable()
 export class FileService {
@@ -57,10 +58,8 @@ export class FileService {
 
   async findAll(
     user: User,
-    paginationOptions: { skip: number; take: number },
     filteringOptions: { tagId: number; yearNum: number },
-    { page, limit }: FilterFilesDto,
-  ): Promise<PaginatedResponse<LibraryFileResponse>> {
+  ): Promise<LibraryFileResponse[]> {
     const tagId = filteringOptions.tagId || user.tagId;
     const yearNum = filteringOptions.yearNum || 1;
 
@@ -68,15 +67,13 @@ export class FileService {
       AND: [{ tags: { some: { id: tagId } } }, { yearNum }],
     };
 
-    const [total, files] = await Promise.all([
-      this.prisma.library.count({ where: whereCondition }),
-      this.prisma.library.findMany({
-        where: whereCondition,
-        select: fileSelect(user),
-        ...paginationOptions,
-      }),
-    ]);
+    const files = await this.prisma.library.findMany({
+      where: whereCondition,
+      select: fileSelect(user),
+      orderBy: { updatedAt: 'desc' },
+    });
 
+    // todo: in memory approach,
     const data = await Promise.all(
       files.map(async (file) => {
         const isStared = user
@@ -94,6 +91,43 @@ export class FileService {
       }),
     );
 
+    return data;
+  }
+
+  async getFilesByType(
+    user: User,
+    { tagId, yearNum }: { tagId: number; yearNum: number },
+    paginationOptions: { skip: number; take: number },
+    { page, limit }: FilterTypedFilesDto,
+    type: LibraryType,
+  ): Promise<PaginatedResponse<LibraryFileResponse>> {
+    const whereCondition = {
+      AND: [{ tags: { some: { id: tagId } } }, { yearNum }],
+    };
+    const [total, files] = await Promise.all([
+      this.prisma.library.count({ where: whereCondition }),
+      this.prisma.library.findMany({
+        where: { ...whereCondition, type },
+        select: fileSelect(user),
+        ...paginationOptions,
+        orderBy: { updatedAt: 'desc' },
+      }),
+    ]);
+
+    const starredFiles = await this.prisma.star.findMany({
+      where: { userId: user.id },
+      select: { libraryId: true },
+    });
+
+    const starredSet = new Set(starredFiles.map((s) => s.libraryId));
+
+    const data = await Promise.all(
+      files.map(async (file) => {
+        const isStared = starredSet.has(file.id);
+        return { ...file, isStared };
+      }),
+    );
+
     return {
       data,
       meta: {
@@ -103,17 +137,5 @@ export class FileService {
         PagesCount: Math.ceil(total / limit),
       },
     };
-  }
-
-  findOne(id: number) {
-    return `This action returns a #${id} library`;
-  }
-
-  update(id: number, updateLibraryDto) {
-    return `This action updates a #${id} library`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} library`;
   }
 }
