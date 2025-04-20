@@ -7,7 +7,7 @@ import {
   IsString,
   ValidateNested,
 } from 'class-validator';
-import { CreateFileDto } from 'src/common/dtos/create-file.dto';
+import { CreatePollDto } from './poll.dto';
 
 export class CreatePostDto {
   @IsNotEmpty()
@@ -19,8 +19,8 @@ export class CreatePostDto {
   @Type(() => Number)
   tagIds: number[];
 
-  // @IsOptional()
-  // @ValidateNested()
-  // @Type(() => CreateFileDto)
-  // fileData?: CreateFileDto;
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => CreatePollDto)
+  poll?: CreatePollDto;
 }

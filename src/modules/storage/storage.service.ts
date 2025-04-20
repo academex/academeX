@@ -69,6 +69,15 @@ export class StorageService {
 
     return await Promise.all(uploadPromises);
   }
+  async uploadImage(image: Express.Multer.File): Promise<{
+    path: string;
+    url: string;
+    fileName: string;
+    fileSize: number;
+    mimeType: string;
+  }> {
+    return await this.uploadFile(image, 'users-images');
+  }
 
   async uploadPDF(file: Express.Multer.File): Promise<{
     path: string;

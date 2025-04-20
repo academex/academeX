@@ -1,5 +1,6 @@
 import { Prisma, User } from '@prisma/client';
 import { baseUserSelect } from './user.select';
+import { count } from 'console';
 
 export const postSelect = (user?: User) =>
   ({
@@ -10,6 +11,31 @@ export const postSelect = (user?: User) =>
         id: true,
         url: true,
         name: true,
+      },
+    },
+    poll: {
+      select: {
+        id: true,
+        question: true,
+        pollOptions: {
+          select: {
+            id: true,
+            content: true,
+            order: true,
+            count: true,
+            pollVotes: user
+              ? {
+                  where: {
+                    userId: user.id,
+                  },
+                  select: {
+                    id: true,
+                  },
+                  take: 1,
+                }
+              : undefined,
+          },
+        },
       },
     },
     fileUrl: true,
@@ -37,7 +63,7 @@ export const postSelect = (user?: User) =>
       distinct: ['type' as const] satisfies Prisma.ReactionScalarFieldEnum[],
     },
     ...(user && {
-      savedPost: {
+      savedPosts: {
         where: { userId: user.id },
         select: { id: true },
         take: 1,

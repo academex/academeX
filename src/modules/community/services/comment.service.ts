@@ -11,6 +11,7 @@ import { commentSelect } from 'src/common/prisma/selects';
 import { CommentResponse, PaginatedResponse } from 'src/common/interfaces';
 import { UpdateCommentDto } from '../dto/update-comment.dto';
 import { ReplyService } from './reply.service';
+import { CreateCommentsDto } from '../dto/create-comments.dto';
 
 @Injectable()
 export class CommentService {
@@ -49,6 +50,32 @@ export class CommentService {
 
     return { ...comment, likes: 0, isLiked: false, repliesCount: 0 };
   }
+  async createComments(
+    createCommentsDto: CreateCommentsDto,
+    postId: number,
+    user: User,
+  ): Promise<CommentResponse[]> {
+    //
+    //check if the post exists
+    await this.findPostOrThrow(postId);
+    const comments = await this.prisma.comment.createManyAndReturn({
+      data: createCommentsDto.contents.map((content) => ({
+        content,
+        userId: user.id,
+        postId: postId,
+      })),
+      select: commentSelect,
+    });
+
+    if (!(comments.length > 1))
+      throw new BadRequestException(
+        'something went wrong, please try again later',
+      );
+
+    return comments.map((comment) => {
+      return { ...comment, likes: 0, isLiked: false, repliesCount: 0 };
+    });
+  }
 
   async findPostComments(
     postId: number,
@@ -79,11 +106,11 @@ export class CommentService {
           comment.id,
         );
 
-        const likes = await this.prisma.commentLikes.count({
+        const likes = await this.prisma.commentLike.count({
           where: { commentId: comment.id },
         });
 
-        const isLiked = await this.prisma.commentLikes.findUnique({
+        const isLiked = await this.prisma.commentLike.findUnique({
           where: {
             userId_commentId: {
               userId: user.id,
@@ -128,11 +155,11 @@ export class CommentService {
       comment.id,
     );
 
-    const likes = await this.prisma.commentLikes.count({
+    const likes = await this.prisma.commentLike.count({
       where: { commentId: comment.id },
     });
 
-    const isLiked = await this.prisma.commentLikes.findUnique({
+    const isLiked = await this.prisma.commentLike.findUnique({
       where: {
         userId_commentId: {
           userId: user.id,
@@ -171,11 +198,11 @@ export class CommentService {
       comment.id,
     );
 
-    const likes = await this.prisma.commentLikes.count({
+    const likes = await this.prisma.commentLike.count({
       where: { commentId: comment.id },
     });
 
-    const isLiked = await this.prisma.commentLikes.findUnique({
+    const isLiked = await this.prisma.commentLike.findUnique({
       where: {
         userId_commentId: {
           userId: user.id,
@@ -238,7 +265,7 @@ export class CommentService {
         'comment not founded, make sure it belongs to the post',
       );
 
-    const existingLike = await this.prisma.commentLikes.findUnique({
+    const existingLike = await this.prisma.commentLike.findUnique({
       where: {
         userId_commentId: {
           userId: user.id,
@@ -248,7 +275,7 @@ export class CommentService {
     });
 
     if (existingLike) {
-      await this.prisma.commentLikes.delete({
+      await this.prisma.commentLike.delete({
         where: {
           userId_commentId: {
             userId: user.id,
@@ -258,7 +285,7 @@ export class CommentService {
       });
       return { message: 'Comment unliked successfully' };
     } else {
-      await this.prisma.commentLikes.create({
+      await this.prisma.commentLike.create({
         data: {
           commentId,
           userId: user.id,

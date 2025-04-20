@@ -1,6 +1,6 @@
 import { CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { IS_PUBLIC_KEY } from '../constants';
+import { IS_PUBLIC_KEY, OPTIONAL_AUTH_KEY } from '../constants';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import { config } from 'dotenv';
@@ -22,14 +22,23 @@ export class AuthGuard implements CanActivate {
 
       if (isPublic) return true;
 
+      const OptionalAuth = this.reflector.getAllAndOverride<boolean>(
+        OPTIONAL_AUTH_KEY,
+        [context.getClass(), context.getHandler()],
+      );
+
       const request = context.switchToHttp().getRequest();
       const token = this.extractToken(request);
+
+      if (OptionalAuth && !token) {
+        request['user'] = undefined;
+        return true;
+      }
 
       const { username } = this.jwtService.verify(token, {
         secret: process.env.JWT_SECRET,
       });
 
-      // const { password, ...user } =
       const {
         password,
         resetPasswordToken,
@@ -45,6 +54,7 @@ export class AuthGuard implements CanActivate {
   }
 
   private extractToken(req: Request): string | undefined {
+    if (!req.headers.authorization) return undefined;
     const [type, token] = req.headers.authorization?.split(' ');
     return type == 'Bearer' ? token : undefined;
   }

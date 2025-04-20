@@ -5,11 +5,9 @@ import {
   Body,
   Param,
   ParseIntPipe,
-  ParseEnumPipe,
   UseInterceptors,
   UploadedFiles,
   Query,
-  Delete,
 } from '@nestjs/common';
 import { ReactionType, User } from '@prisma/client';
 import { UserIdentity } from 'src/common/decorators/user.decorator';
@@ -17,18 +15,17 @@ import { PostService } from '../services';
 import { CreatePostDto } from '../dto/create-post.dto';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { FileValidationPipe } from 'src/common/validators/file-validation.pipe';
-import { StorageService } from 'src/modules/storage/storage.service';
 import { ReactToPostDto } from '../dto/react-post.dto';
 import { FilterPostsDto } from '../dto/filter-posts.dto';
 import { SavePostService } from './../services/save-post.service';
 import { PostReactionsDto } from '../dto/post-reactions.dto';
+import { OptionalAuth } from 'src/common/decorators/optional-auth.decorator';
 
 @Controller('post')
 export class PostController {
   constructor(
     private readonly postService: PostService,
     private readonly savePostService: SavePostService,
-    private storageService: StorageService,
   ) {}
 
   @Post()
@@ -57,6 +54,45 @@ export class PostController {
       filteringOptions,
       filterPostsDto,
     );
+  }
+
+  @OptionalAuth()
+  @Get('popular')
+  findPopular(
+    @UserIdentity() user: User | undefined,
+    @Query() filterPostsDto: FilterPostsDto,
+  ) {
+    const paginationOptions = this.buildPaginationOptions(filterPostsDto);
+    return this.postService.findPopular(
+      user,
+      paginationOptions,
+      filterPostsDto,
+    );
+  }
+
+  @OptionalAuth()
+  @Get('user/:username')
+  userPosts(
+    @UserIdentity() user: User | undefined,
+    @Param('username') username: string,
+    @Query() filterPostsDto: FilterPostsDto,
+  ) {
+    const paginationOptions = this.buildPaginationOptions(filterPostsDto);
+    return this.postService.userPosts(
+      username,
+      user,
+      paginationOptions,
+      filterPostsDto,
+    );
+  }
+
+  @Post('vote')
+  async vote(
+    @UserIdentity() user: User,
+    @Body('pollId', ParseIntPipe) pollId: number,
+    @Body('optionId', ParseIntPipe) optionId: number,
+  ) {
+    return this.postService.vote(pollId, optionId, user);
   }
 
   // get all saved posts

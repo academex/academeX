@@ -68,11 +68,11 @@ export class ReplyService {
 
     return await Promise.all(
       replies.map(async (reply) => {
-        const likes = await this.prisma.replyLikes.count({
+        const likes = await this.prisma.replyLike.count({
           where: { replyId: reply.id },
         });
 
-        const isLiked = await this.prisma.replyLikes.findUnique({
+        const isLiked = await this.prisma.replyLike.findUnique({
           where: {
             userId_replyId: {
               userId: user.id,
@@ -107,11 +107,11 @@ export class ReplyService {
       select: replySelect,
     });
 
-    const likes = await this.prisma.replyLikes.count({
+    const likes = await this.prisma.replyLike.count({
       where: { replyId: reply.id },
     });
 
-    const isLiked = await this.prisma.replyLikes.findUnique({
+    const isLiked = await this.prisma.replyLike.findUnique({
       where: {
         userId_replyId: {
           userId: user.id,
@@ -172,7 +172,7 @@ export class ReplyService {
         'Reply not found, make sure it belongs to the comment',
       );
 
-    const existingLike = await this.prisma.replyLikes.findUnique({
+    const existingLike = await this.prisma.replyLike.findUnique({
       where: {
         userId_replyId: {
           userId: user.id,
@@ -182,7 +182,7 @@ export class ReplyService {
     });
 
     if (existingLike) {
-      await this.prisma.replyLikes.delete({
+      await this.prisma.replyLike.delete({
         where: {
           userId_replyId: {
             userId: user.id,
@@ -192,7 +192,7 @@ export class ReplyService {
       });
       return { message: 'Reply unliked successfully' };
     } else {
-      await this.prisma.replyLikes.create({
+      await this.prisma.replyLike.create({
         data: {
           replyId,
           userId: user.id,

@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/modules/database/prisma.service';
 import { ReactionType, User } from '@prisma/client';
 import { CreatePostDto } from '../dto/create-post.dto';
@@ -20,7 +24,7 @@ export class PostService {
     user: User,
     uploads: { images?: Express.Multer.File[]; file?: Express.Multer.File[] },
   ): Promise<PostResponse> {
-    const { tagIds, content } = createPostDto;
+    const { tagIds, content, poll } = createPostDto;
 
     // Tags validation
     await this.validateTags(tagIds, user.tagId);
@@ -51,6 +55,20 @@ export class PostService {
         tags: {
           connect: tagIds.map((tagId) => ({ id: tagId })),
         },
+        ...(poll && {
+          poll: {
+            create: {
+              question: poll.question,
+              endDate: poll.endDate,
+              pollOptions: {
+                create: poll.options.map((option, indx) => ({
+                  content: option,
+                  order: indx,
+                })),
+              },
+            },
+          },
+        }),
       },
       select: postSelect(user),
     });
@@ -70,40 +88,49 @@ export class PostService {
     { page, limit }: FilterPostsDto,
   ): Promise<PaginatedResponse<PostResponse>> {
     const tagId = filteringOptions.tagId || user.tagId;
-
     const whereCondition = {
       tags: {
         some: { id: tagId },
       },
     };
 
-    // count total posts based on the filtering options
-    // get posts based on the filtering options
-    const [total, posts] = await Promise.all([
-      this.prisma.post.count({ where: whereCondition }),
-      this.prisma.post.findMany({
-        where: whereCondition,
-        select: postSelect(user),
-        orderBy: { createdAt: 'desc' },
-        ...paginationOptions,
-      }),
-    ]);
-
-    const data = await Promise.all(
-      posts.map(async (post) => {
-        const isReacted = await this.prisma.reaction.findUnique({
-          where: { userId_postId: { userId: user.id, postId: post.id } },
-        });
-        const readyPost = {
-          ...serializePost(post),
-          isReacted: !!isReacted,
-          reactionType: isReacted?.type || null,
-        };
-        return readyPost;
-      }),
+    return this.getReadyPosts(
+      paginationOptions,
+      { page, limit },
+      user,
+      whereCondition,
     );
+  }
 
-    return serializePaginatedPosts(data, { page, limit, total });
+  async findPopular(
+    user: User | undefined,
+    paginationOptions: { skip: number; take: number },
+    { page, limit }: FilterPostsDto,
+  ): Promise<PaginatedResponse<PostResponse>> {
+    return this.getReadyPosts(paginationOptions, { page, limit }, user);
+  }
+
+  async userPosts(
+    username: string,
+    user: User,
+    paginationOptions: { skip: number; take: number },
+    { page, limit }: FilterPostsDto,
+  ) {
+    const userExists = await this.prisma.user.findUnique({
+      where: { username },
+    });
+
+    if (!userExists) throw new NotFoundException('User not found');
+
+    const whereCondition = {
+      user: { username },
+    };
+    return this.getReadyPosts(
+      paginationOptions,
+      { page, limit },
+      user,
+      whereCondition,
+    );
   }
 
   async findOne(id: number, user: User): Promise<PostResponse> {
@@ -118,7 +145,7 @@ export class PostService {
     });
     return {
       ...serializePost(post),
-      isSaved: post?.savedPost.length > 0,
+      isSaved: post?.savedPosts.length > 0,
       isReacted: isReacted ? true : false,
       reactionType: isReacted?.type || null,
     };
@@ -158,6 +185,11 @@ export class PostService {
         return updatedReaction;
       }
     } else {
+      // checking if the post is exist
+      const post = await this.prisma.post.findUnique({
+        where: { id },
+      });
+      if (!post) throw new BadRequestException('Post not found');
       // If no existing reaction, create a new one
       const newReaction = await this.prisma.reaction.create({
         data: {
@@ -216,8 +248,83 @@ export class PostService {
   }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   
 =======
+=======
+  async vote(pollId: number, optionId: number, user: User) {
+    const userId = user.id;
+    return await this.prisma.$transaction(async (tx) => {
+      // Get the poll option and its associated poll
+      const pollOption = await tx.pollOption.findFirst({
+        where: { id: optionId, pollId: pollId },
+        select: {
+          poll: true,
+          id: true,
+          content: true,
+          order: true,
+        },
+      });
+
+      if (!pollOption) {
+        throw new BadRequestException(
+          "Poll option not found, make sure you provide a valid option and poll's data",
+        );
+      }
+
+      // Check if poll has ended
+      if (pollOption.poll.endDate < new Date()) {
+        throw new BadRequestException('Poll has ended');
+      }
+
+      // Check if user has already voted on this poll
+      const existingVote = await tx.pollVote.findUnique({
+        where: {
+          userId_pollOptionId: {
+            userId,
+            pollOptionId: optionId,
+          },
+        },
+      });
+
+      if (existingVote) {
+        throw new BadRequestException('User has already voted in this poll');
+      }
+
+      //update the pollOption count
+      await tx.pollOption.update({
+        where: { id: optionId },
+        data: {
+          count: {
+            increment: 1,
+          },
+        },
+      });
+
+      // Create the vote
+      const voted = await tx.pollVote.create({
+        data: {
+          pollOption: {
+            connect: {
+              id: optionId,
+            },
+          },
+          user: {
+            connect: {
+              id: userId,
+            },
+          },
+        },
+      });
+
+      if (!voted) {
+        throw new BadRequestException('Something went wrong while voting');
+      }
+      return { message: 'Voted successfully' };
+    });
+  }
+
+>>>>>>> main
   //! Helper Functions
   private async validateTags(tagIds: number[], userTagId: number) {
     // Get user's tag info
@@ -288,6 +395,44 @@ export class PostService {
     }, {});
 
     return stat;
+  }
+<<<<<<< HEAD
+>>>>>>> main
+=======
+
+  async getReadyPosts(
+    paginationOptions: { skip: number; take: number },
+    { page, limit }: { page: number; limit: number },
+    user: User | undefined,
+    whereCondition?: any,
+  ): Promise<PaginatedResponse<PostResponse>> {
+    const [total, posts] = await Promise.all([
+      this.prisma.post.count({ where: whereCondition }),
+      this.prisma.post.findMany({
+        where: whereCondition,
+        select: postSelect(user),
+        orderBy: { createdAt: 'desc' },
+        ...paginationOptions,
+      }),
+    ]);
+
+    const data = await Promise.all(
+      posts.map(async (post) => {
+        const isReacted = user
+          ? await this.prisma.reaction.findUnique({
+              where: { userId_postId: { userId: user.id, postId: post.id } },
+            })
+          : false;
+        const readyPost = {
+          ...serializePost(post),
+          isReacted: !!isReacted,
+          reactionType: (isReacted && isReacted?.type) || null,
+        };
+        return readyPost;
+      }),
+    );
+
+    return serializePaginatedPosts(data, { page, limit, total });
   }
 >>>>>>> main
 }
