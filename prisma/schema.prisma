@@ -3,30 +3,33 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-  // directUrl = env("DATABASE_URL_UNPOOLED")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
 }
 
 // MODELS
 model User {
-  id                        Int       @id @default(autoincrement())
-  username                  String    @unique
-  firstName                 String    @map("first_name")
-  lastName                  String?   @map("last_name")
-  email                     String    @unique
-  role                      Role      @default(STUDENT)
+  id                        Int        @id @default(autoincrement())
+  username                  String     @unique
+  firstName                 String     @map("first_name")
+  lastName                  String?    @map("last_name")
+  email                     String     @unique
+  role                      Role       @default(STUDENT)
   password                  String
-  resetPasswordToken        String?   @unique @map("reset_password_token")
-  resetPasswordTokenExpires DateTime? @default(now()) @map("reset_password_token_expires")
-  photoUrl                  String?   @map("photo_url")
-  bio                       String?   @db.Text
-  currentYear               Int       @map("current_year")
-  gender                    Gender    @default(MALE)
-  phoneNum                  String    @map("phone_num")
-  createdAt                 DateTime  @default(now()) @map("created_at")
-  updatedAt                 DateTime  @default(now()) @updatedAt @map("updated_at")
-  isActive                  Boolean   @default(true) @map("is_active")
+  resetPasswordToken        String?    @unique @map("reset_password_token")
+  resetPasswordTokenExpires DateTime?  @default(now()) @map("reset_password_token_expires")
+  photoUrl                  String?    @map("photo_url")
+  bio                       String?    @db.Text
+  currentYear               Int        @map("current_year")
+  gender                    Gender     @default(MALE)
+  phoneNum                  String     @map("phone_num")
+  createdAt                 DateTime   @default(now()) @map("created_at")
+  updatedAt                 DateTime   @default(now()) @updatedAt @map("updated_at")
+  statusUpdatedBy           String?    @map("status_updated_by")
+  status                    UserStatus @default(INACTIVE)
+  nationalId                String?    @unique @map("national_id")
+  nationalIdPhotoUrl        String?    @map("national_id_photo_url")
 
   // Relations
   tag          Tag           @relation(fields: [tagId], references: [id])
@@ -313,6 +316,12 @@ model PostUpload {
 }
 
 // ENUMS
+enum UserStatus {
+  PENDING
+  ACTIVE
+  INACTIVE
+}
+
 enum Role {
   ADMIN
   INSTRUCTOR

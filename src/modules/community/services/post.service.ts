@@ -247,11 +247,6 @@ export class PostService {
     };
   }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-  
-=======
-=======
   async vote(pollId: number, optionId: number, user: User) {
     const userId = user.id;
     return await this.prisma.$transaction(async (tx) => {
@@ -324,7 +319,6 @@ export class PostService {
     });
   }
 
->>>>>>> main
   //! Helper Functions
   private async validateTags(tagIds: number[], userTagId: number) {
     // Get user's tag info
@@ -396,9 +390,6 @@ export class PostService {
 
     return stat;
   }
-<<<<<<< HEAD
->>>>>>> main
-=======
 
   async getReadyPosts(
     paginationOptions: { skip: number; take: number },
@@ -434,5 +425,5 @@ export class PostService {
 
     return serializePaginatedPosts(data, { page, limit, total });
   }
->>>>>>> main
+
 }

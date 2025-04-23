@@ -7,6 +7,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { TagModule } from './modules/tag/tag.module';
 import { CommunityModule } from './modules/community/community.module';
 import { LibraryModule } from './modules/library/library.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { LibraryModule } from './modules/library/library.module';
     AuthModule,
     TagModule,
     LibraryModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [AppService],
