@@ -66,11 +66,11 @@ import { UserIdentity } from 'src/common/decorators/user.decorator';
 export class TagController {
   constructor(private readonly tagService: TagService) {}
 
-  @Roles(Role.ADMIN)
-  @Post()
-  create(@Body() createTagDto: CreateTagDto) {
-    return this.tagService.create(createTagDto);
-  }
+  // @Roles(Role.ADMIN)
+  // @Post()
+  // create(@Body() createTagDto: CreateTagDto) {
+  //   return this.tagService.create(createTagDto);
+  // }
 
   @Public()
   @Get()
@@ -101,17 +101,17 @@ export class TagController {
     return this.tagService.findOne(id);
   }
   //admin role
-  @Patch(':id')
-  update(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() updateTagDto: UpdateTagDto,
-  ) {
-    return this.tagService.update(id, updateTagDto);
-  }
+  // @Patch(':id')
+  // update(
+  //   @Param('id', ParseIntPipe) id: number,
+  //   @Body() updateTagDto: UpdateTagDto,
+  // ) {
+  //   return this.tagService.update(id, updateTagDto);
+  // }
 
-  //admin role
-  @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.tagService.remove(id);
-  }
+  // //admin role
+  // @Delete(':id')
+  // remove(@Param('id', ParseIntPipe) id: number) {
+  //   return this.tagService.remove(id);
+  // }
 }

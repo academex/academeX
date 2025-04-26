@@ -425,4 +425,5 @@ export class PostService {
 
     return serializePaginatedPosts(data, { page, limit, total });
   }
+
 }
