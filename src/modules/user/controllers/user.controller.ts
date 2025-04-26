@@ -10,14 +10,14 @@ import {
 } from '@nestjs/common';
 import { User } from '@prisma/client';
 import { UserIdentity } from 'src/common/decorators/user.decorator';
-import { UserService } from './user.service';
 import { OptionalAuth } from 'src/common/decorators/optional-auth.decorator';
-import { UpdateUserDto } from './dto/update-user.dto';
 import {
   FileFieldsInterceptor,
   FileInterceptor,
 } from '@nestjs/platform-express';
-import { UpdatePassword } from './dto/update-password.dto';
+import { UserService } from '../user.service';
+import { UpdatePassword } from '../dto/update-password.dto';
+import { UpdateUserDto } from '../dto/update-user.dto';
 
 @Controller('user')
 export class UserController {

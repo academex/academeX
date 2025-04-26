@@ -7,11 +7,12 @@ import {
 } from '@nestjs/common';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PrismaService } from '../database/prisma.service';
-import { User, Tag } from '@prisma/client';
+import { User, Tag, UserStatus } from '@prisma/client';
 import { hash, compare } from 'bcrypt';
 import { SignupDto } from '../auth/dto/signup.dto';
 import { UpdatePassword } from './dto/update-password.dto';
 import { StorageService } from '../storage/storage.service';
+import { UserProfileSelect, UserSelect } from 'src/common/prisma/selects';
 
 @Injectable()
 export class UserService {
@@ -132,70 +133,14 @@ export class UserService {
   async profile(username: string, ReqUser: User) {
     const user = await this.prisma.user.findUnique({
       where: { username },
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        bio: true,
-        currentYear: true,
-        gender: true,
-        phoneNum: true,
-        photoUrl: true,
-        role: true,
-        tag: {
-          select: {
-            name: true,
-            collegeAr: true,
-            collegeEn: true,
-            majorAr: true,
-            majorEn: true,
-          },
-        },
-      },
+      select: UserProfileSelect,
     });
 
     if (!user) throw new NotFoundException('user not found.');
     return user;
   }
-
-  async findOneById(id: number): Promise<User> {
-    return await this.prisma.user.findUnique({ where: { id } });
-  }
-  async findOneByIdAndThrow(id: number): Promise<User | HttpException> {
-    const user = await this.prisma.user.findUnique({ where: { id } });
-    if (!user) throw new NotFoundException('user not found');
-    return user;
-  }
-
   async findOneByUsername(username: string): Promise<User> {
     return await this.prisma.user.findUnique({ where: { username } });
-  }
-
-  async findOneByUsernameAndThrow(
-    username: string,
-  ): Promise<User | HttpException> {
-    const user = await this.prisma.user.findUnique({ where: { username } });
-    if (!user) throw new NotFoundException('user not found');
-    return user;
-  }
-
-  async findOneByUsernameOrEmail(
-    email: string,
-    username: string,
-  ): Promise<User> {
-    return await this.prisma.user.findFirst({
-      where: { OR: [{ email }, { username }] },
-    });
-  }
-
-  findAll() {
-    return `This action returns all user`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} user`;
   }
 
   async validateTag(tagId: number): Promise<Tag> {
@@ -209,5 +154,68 @@ export class UserService {
       throw new BadRequestException(
         'current year not valid for this college and major',
       );
+  }
+
+  //! Admin Functions:
+  // todo: inactive must upload a photo to update his status to pending (requested to review)
+
+  // todo: pagination
+  async getPendingUsers() {
+    const users = await this.prisma.user.findMany({
+      where: { status: UserStatus.PENDING },
+      select: UserSelect,
+      orderBy: { createdAt: 'desc' },
+    });
+    return users;
+  }
+
+  async getAllUser() {
+    return await this.prisma.user.findMany({
+      select: UserSelect,
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async getUser(id: number) {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: UserSelect,
+    });
+
+    if (!user) throw new NotFoundException('user not found.');
+    return user;
+  }
+
+  async updateUserStatus(admin: User, userId: number, status: UserStatus) {
+    // check if the user is exists and his status is pending (is a must)
+    const userExists = await this.prisma.user.findUnique({
+      where: { id: userId, status: UserStatus.PENDING },
+    });
+
+    if (!userExists)
+      throw new BadRequestException('not user found with this data');
+
+    // update the user status and statusUpdatedBy
+    return await this.prisma.user.update({
+      where: { id: userId },
+      data: { status, statusUpdatedBy: admin.username },
+      select: UserSelect,
+    });
+  }
+  async disActivateUser(admin: User, userId: number) {
+    // check if the user is exists and his status is pending (is a must)
+    const userExists = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!userExists)
+      throw new BadRequestException('not user found with this data');
+
+    // update the user status and statusUpdatedBy
+    return await this.prisma.user.update({
+      where: { id: userId },
+      data: { status: UserStatus.INACTIVE, statusUpdatedBy: admin.username },
+      select: UserSelect,
+    });
   }
 }
