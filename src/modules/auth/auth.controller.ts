@@ -13,9 +13,7 @@ export class AuthController {
   @Public()
   @Post('signin')
   async signin(@Body() signinDto: SigninDto) {
-    // async login() {
     return await this.authService.signin(signinDto);
-    // return await this.authService.login();
   }
 
   @Public()
@@ -23,9 +21,4 @@ export class AuthController {
   async signup(@Body() signupDto: SignupDto) {
     return await this.authService.signup(signupDto);
   }
-
-  // @Post('verify')
-  // async verifyUser(@Body() { otp }: VerifyUserDto, @UserIdentity() user: IUser) {
-  //   return await this.authService.verifyUser(user.id, otp);
-  // }
 }

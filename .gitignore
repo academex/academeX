@@ -2,6 +2,9 @@
 /dist
 /node_modules
 /build
+/todos.ts
+.todos.ts
+
 
 .vscode/
 pgdata

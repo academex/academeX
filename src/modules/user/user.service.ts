@@ -23,7 +23,7 @@ export class UserService {
     private storageService: StorageService,
   ) {}
 
-  async create(userData: SignupDto): Promise<User> {
+  async create(userData: SignupDto) {
     const { tagId, ...rest } = userData;
 
     const tag = await this.validateTag(tagId);
@@ -31,6 +31,7 @@ export class UserService {
     rest.password = await hash(rest.password, 10);
 
     const user = await this.prisma.user.create({
+      select: UserProfileSelect,
       data: {
         ...rest, //
         tag: {
@@ -47,7 +48,7 @@ export class UserService {
     user: User,
     data: UpdateUserDto,
     photoUrl?: Express.Multer.File,
-  ): Promise<User> {
+  ) {
     const { tagId, currentYear, ...restData } = data;
     let tag: Tag | null = null;
     let userTag = null;
@@ -78,6 +79,7 @@ export class UserService {
     }
 
     const updatedUser = await this.prisma.user.update({
+      select: UserProfileSelect,
       where: { id: user.id },
       data: {
         ...restData,
@@ -139,8 +141,23 @@ export class UserService {
     if (!user) throw new NotFoundException('user not found.');
     return user;
   }
-  async findOneByUsername(username: string): Promise<User> {
-    return await this.prisma.user.findUnique({ where: { username } });
+
+  async findOneByUsernameOrEmail(username: string) {
+    return await this.prisma.user.findFirst({
+      select: UserProfileSelect,
+      where: {
+        OR: [{ username: username }, { email: username }],
+      },
+    });
+  }
+
+  async findOneByUsernameOrEmailWithPass(username: string) {
+    return await this.prisma.user.findFirst({
+      select: { ...UserProfileSelect, password: true },
+      where: {
+        OR: [{ username: username }, { email: username }],
+      },
+    });
   }
 
   async validateTag(tagId: number): Promise<Tag> {
