@@ -63,7 +63,9 @@ model Tag {
   yearsNum    Int      @map("years_num")
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now()) @map("created_at")
+  createdBy   String?  @map("created_by")
   updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+  updatedBy   String?  @map("updated_by")
 
   // Relations
   users     User[]

@@ -4,6 +4,7 @@
 /build
 /todos.ts
 .todos.ts
+.cursor
 
 
 .vscode/

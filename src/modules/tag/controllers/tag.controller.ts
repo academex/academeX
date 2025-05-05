@@ -9,13 +9,10 @@ import {
   ParseIntPipe,
   Query,
 } from '@nestjs/common';
-import { TagService } from './tag.service';
-import { CreateTagDto } from './dto/create-tag.dto';
-import { UpdateTagDto } from './dto/update-tag.dto';
 import { Public } from 'src/common/decorators/access.decorator';
-import { Roles } from 'src/common/decorators/roles.decorator';
 import { Role, User } from '@prisma/client';
 import { UserIdentity } from 'src/common/decorators/user.decorator';
+import { TagService } from '../tag.service';
 
 /**
  * Controller for handling tag-related operations.
@@ -66,12 +63,6 @@ import { UserIdentity } from 'src/common/decorators/user.decorator';
 export class TagController {
   constructor(private readonly tagService: TagService) {}
 
-  // @Roles(Role.ADMIN)
-  // @Post()
-  // create(@Body() createTagDto: CreateTagDto) {
-  //   return this.tagService.create(createTagDto);
-  // }
-
   @Public()
   @Get()
   findAll() {
@@ -100,18 +91,4 @@ export class TagController {
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.tagService.findOne(id);
   }
-  //admin role
-  // @Patch(':id')
-  // update(
-  //   @Param('id', ParseIntPipe) id: number,
-  //   @Body() updateTagDto: UpdateTagDto,
-  // ) {
-  //   return this.tagService.update(id, updateTagDto);
-  // }
-
-  // //admin role
-  // @Delete(':id')
-  // remove(@Param('id', ParseIntPipe) id: number) {
-  //   return this.tagService.remove(id);
-  // }
 }

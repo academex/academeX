@@ -15,18 +15,16 @@ export class AuthService {
   ) {}
 
   async signin({ username, password }: SigninDto) {
-    // note: username maybe email or username.
-    const userExists =
+    // note: username mayb_e email or username.
+    const { password: userPassword, ...user } =
       await this.userService.findOneByUsernameOrEmailWithPass(username);
 
-    if (!userExists)
-      throw new UnauthorizedException('wrong username or password');
+    if (!user) throw new UnauthorizedException('wrong username or password');
 
-    const isPasswordCorrect = await compare(password, userExists.password);
+    const isPasswordCorrect = await compare(password, userPassword);
     if (!isPasswordCorrect)
       throw new UnauthorizedException('wrong username or password');
 
-    const user = { password, ...userExists };
     return {
       user,
       accessToken: this.JwtService.sign({ username }),

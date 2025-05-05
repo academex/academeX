@@ -7,24 +7,30 @@ import {
   Param,
   Delete,
   ParseIntPipe,
+  Query,
 } from '@nestjs/common';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { Role, User, UserStatus } from '@prisma/client';
 import { UserService } from '../user.service';
 import { UserIdentity } from 'src/common/decorators/user.decorator';
+import { FilterUsersDto } from '../dto/filter-users.dto';
+import { buildPaginationOptions } from 'src/common/utils';
 
 @Roles(Role.ADMIN)
-@Controller('dashboard/user')
+@Controller('admin/user')
 export class UserAdminController {
   constructor(private readonly userService: UserService) {}
+
   @Get('pending-users')
-  getPendingUsers() {
-    return this.userService.getPendingUsers();
+  getPendingUsers(@Query() { page, limit }: FilterUsersDto) {
+    const paginationOptions = buildPaginationOptions({ page, limit });
+    return this.userService.getPendingUsers(paginationOptions, { page, limit });
   }
 
   @Get('')
-  getAllUsers() {
-    return this.userService.getAllUser();
+  getAllUsers(@Query() filterUsersDto: FilterUsersDto) {
+    const paginationOptions = buildPaginationOptions(filterUsersDto);
+    return this.userService.getAllUser(paginationOptions, filterUsersDto);
   }
 
   @Get(':id')
@@ -48,7 +54,7 @@ export class UserAdminController {
     return this.userService.updateUserStatus(admin, id, UserStatus.REJECTED);
   }
 
-  @Patch(':id/reject-user')
+  @Patch(':id/deactivate-user')
   disActivateUser(
     @Param('id', ParseIntPipe) id: number,
     @UserIdentity() admin: User,

@@ -7,12 +7,13 @@ import {
 } from '@nestjs/common';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PrismaService } from '../database/prisma.service';
-import { User, Tag, UserStatus } from '@prisma/client';
+import { User, Tag, UserStatus, Role } from '@prisma/client';
 import { hash, compare } from 'bcrypt';
 import { SignupDto } from '../auth/dto/signup.dto';
 import { UpdatePassword } from './dto/update-password.dto';
 import { StorageService } from '../storage/storage.service';
 import { UserProfileSelect, UserSelect } from 'src/common/prisma/selects';
+import { FilterUsersDto } from './dto/filter-users.dto';
 
 @Injectable()
 export class UserService {
@@ -177,20 +178,63 @@ export class UserService {
   // todo: inactive must upload a photo to update his status to pending (requested to review)
 
   // todo: pagination
-  async getPendingUsers() {
-    const users = await this.prisma.user.findMany({
-      where: { status: UserStatus.PENDING },
-      select: UserSelect,
-      orderBy: { createdAt: 'desc' },
-    });
-    return users;
+  async getPendingUsers(
+    paginationOptions: { skip: number; take: number },
+    { page, limit }: { page: number; limit: number },
+  ) {
+    const [total, users] = await Promise.all([
+      this.prisma.user.count({
+        where: { status: UserStatus.PENDING },
+      }),
+      this.prisma.user.findMany({
+        where: { status: UserStatus.PENDING },
+        select: UserSelect,
+        orderBy: { createdAt: 'desc' },
+        ...paginationOptions,
+      }),
+    ]);
+
+    return {
+      data: users,
+      meta: {
+        page,
+        limit,
+        total,
+        PagesCount: Math.ceil(total / limit),
+      },
+    };
   }
 
-  async getAllUser() {
-    return await this.prisma.user.findMany({
-      select: UserSelect,
-      orderBy: { createdAt: 'desc' },
-    });
+  // query filtering
+  async getAllUser(
+    paginationOptions: { skip: number; take: number },
+    { page, limit, status, role }: FilterUsersDto,
+  ) {
+    const whereCondition = {
+      ...(status && { status }),
+      ...(role && { role }),
+    };
+
+    // todo: exclude the admin from role.
+    const [total, users] = await Promise.all([
+      this.prisma.user.count({ where: whereCondition }),
+      this.prisma.user.findMany({
+        where: whereCondition,
+        select: UserSelect,
+        orderBy: { createdAt: 'desc' },
+        ...paginationOptions,
+      }),
+    ]);
+
+    return {
+      data: users,
+      meta: {
+        page,
+        limit,
+        total,
+        PagesCount: Math.ceil(total / limit),
+      },
+    };
   }
 
   async getUser(id: number) {

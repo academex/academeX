@@ -1,4 +1,6 @@
+import { Type } from 'class-transformer';
 import {
+  IsInt,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -33,7 +35,9 @@ export class CreateTagDto {
   description: string;
 
   @IsNotEmpty()
-  @IsNumber()
+  // @IsNumber()
+  @Type(() => Number)
+  @IsInt()
   @Min(3)
   @Max(7)
   yearsNum: number;
