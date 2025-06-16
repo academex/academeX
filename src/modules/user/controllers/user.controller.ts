@@ -2,8 +2,11 @@ import {
   BadRequestException,
   Body,
   Controller,
+  FileTypeValidator,
   Get,
+  MaxFileSizeValidator,
   Param,
+  ParseFilePipe,
   Put,
   UploadedFile,
   UseInterceptors,
@@ -28,6 +31,24 @@ export class UserController {
   getUser(@Param('username') username: string, @UserIdentity() user: User) {
     return this.userService.profile(username, user);
   }
+
+  // @Get('activate-me')
+  // @UseInterceptors(FileInterceptor('photoUrl'))
+  // activationReq(
+  //   @UploadedFile(
+  //     new ParseFilePipe({
+  //       validators: [
+  //         new MaxFileSizeValidator({ maxSize: 2 * 1024 * 1024 }),
+  //         new FileTypeValidator({ fileType: /(jpg|jpeg|png)$/ }),
+  //       ],
+  //       fileIsRequired: true,
+  //     }),
+  //   )
+  //   photoUrl: Express.Multer.File,
+  //   @UserIdentity() user: User,
+  // ) {
+    
+  // }
 
   @Put('update')
   @UseInterceptors(
